@@ -1,11 +1,17 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>CPR 語音引導計時器 v2.1</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -13,6 +19,7 @@
       overflow: hidden;
       color: #fff;
     }
+
     .app-container {
       display: grid;
       grid-template-columns: 1fr 320px;
@@ -21,28 +28,47 @@
       padding: 10px;
       gap: 10px;
     }
+
     .header {
       grid-column: 1 / -1;
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 5px 15px;
-      background: rgba(0,0,0,0.3);
+      background: rgba(0, 0, 0, 0.3);
       border-radius: 10px;
     }
-    .header h1 { font-size: 1.2rem; color: #e94560; }
-    .header-controls { display: flex; gap: 10px; align-items: center; }
+
+    .header h1 {
+      font-size: 1.2rem;
+      color: #e94560;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
     .btn-sm {
       padding: 8px 15px;
       font-size: 0.85rem;
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      background: rgba(255,255,255,0.1);
+      background: rgba(255, 255, 255, 0.1);
       color: #fff;
     }
-    .btn-sm:hover { background: rgba(255,255,255,0.2); }
-    .btn-test { background: #ff9800; color: #000; }
+
+    .btn-sm:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-test {
+      background: #ff9800;
+      color: #000;
+    }
+
     .main-area {
       display: flex;
       flex-direction: column;
@@ -50,7 +76,11 @@
       align-items: center;
       gap: 15px;
     }
-    .timer-display { text-align: center; }
+
+    .timer-display {
+      text-align: center;
+    }
+
     .main-timer {
       font-size: 10rem;
       font-weight: bold;
@@ -59,6 +89,7 @@
       text-shadow: 0 0 40px rgba(0, 255, 136, 0.6);
       line-height: 1;
     }
+
     .timer-info {
       display: flex;
       gap: 30px;
@@ -66,8 +97,16 @@
       margin-top: 10px;
       font-size: 1.3rem;
     }
-    .timer-info span { color: #a0a0a0; }
-    .timer-info .value { color: #ffd700; font-family: 'Courier New', monospace; }
+
+    .timer-info span {
+      color: #a0a0a0;
+    }
+
+    .timer-info .value {
+      color: #ffd700;
+      font-family: 'Courier New', monospace;
+    }
+
     .voice-prompt {
       background: rgba(233, 69, 96, 0.2);
       border: 2px solid #e94560;
@@ -81,13 +120,35 @@
       max-width: 700px;
       width: 100%;
     }
-    .voice-prompt.active { animation: pulse 1s infinite; }
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.7); }
-      50% { box-shadow: 0 0 20px 5px rgba(233, 69, 96, 0.3); }
+
+    .voice-prompt.active {
+      animation: pulse 1s infinite;
     }
-    .voice-prompt p { font-size: 1.4rem; margin: 0; }
-    .controls { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.7);
+      }
+
+      50% {
+        box-shadow: 0 0 20px 5px rgba(233, 69, 96, 0.3);
+      }
+    }
+
+    .voice-prompt p {
+      font-size: 1.4rem;
+      margin: 0;
+    }
+
+    .controls {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
     .btn {
       padding: 15px 35px;
       font-size: 1.2rem;
@@ -97,121 +158,378 @@
       cursor: pointer;
       transition: transform 0.2s;
     }
-    .btn:hover { transform: scale(1.05); }
-    .btn-start { background: linear-gradient(135deg, #00ff88, #00cc6a); color: #000; }
-    .btn-stop { background: linear-gradient(135deg, #ff6b6b, #ee5a5a); color: #fff; }
-    .btn-shock { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #000; }
-    .btn-epi { background: linear-gradient(135deg, #9b59b6, #8e44ad); color: #fff; }
-    .btn-rosc { background: linear-gradient(135deg, #2ecc71, #27ae60); color: #fff; }
-    .btn-reset { background: #444; color: #fff; }
-    .side-panel { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
-    .panel-section { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 12px; }
-    .panel-section h3 { font-size: 0.9rem; color: #ffd700; margin-bottom: 10px; text-align: center; }
-    .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .status-item { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; text-align: center; }
-    .status-item .label { font-size: 0.75rem; color: #a0a0a0; }
-    .status-item .value { font-size: 1.3rem; font-weight: bold; color: #fff; }
-    .status-item.highlight { background: rgba(233, 69, 96, 0.3); border: 1px solid #e94560; }
-    .status-item.epi-due { animation: epi-alert 1s infinite; }
-    @keyframes epi-alert {
-      0%, 100% { background: rgba(155, 89, 182, 0.3); }
-      50% { background: rgba(155, 89, 182, 0.6); }
+
+    .btn:hover {
+      transform: scale(1.05);
     }
-    .rhythm-btns { display: flex; gap: 8px; }
+
+    .btn-start {
+      background: linear-gradient(135deg, #00ff88, #00cc6a);
+      color: #000;
+    }
+
+    .btn-stop {
+      background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+      color: #fff;
+    }
+
+    .btn-shock {
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      color: #000;
+    }
+
+    .btn-epi {
+      background: linear-gradient(135deg, #9b59b6, #8e44ad);
+      color: #fff;
+    }
+
+    .btn-rosc {
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+      color: #fff;
+    }
+
+    .btn-reset {
+      background: #444;
+      color: #fff;
+    }
+
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+    }
+
+    .panel-section {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .panel-section h3 {
+      font-size: 0.9rem;
+      color: #ffd700;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .status-item {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .status-item .label {
+      font-size: 0.75rem;
+      color: #a0a0a0;
+    }
+
+    .status-item .value {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .status-item.highlight {
+      background: rgba(233, 69, 96, 0.3);
+      border: 1px solid #e94560;
+    }
+
+    .status-item.epi-due {
+      animation: epi-alert 1s infinite;
+    }
+
+    @keyframes epi-alert {
+
+      0%,
+      100% {
+        background: rgba(155, 89, 182, 0.3);
+      }
+
+      50% {
+        background: rgba(155, 89, 182, 0.6);
+      }
+    }
+
+    .rhythm-btns {
+      display: flex;
+      gap: 8px;
+    }
+
     .rhythm-btn {
       flex: 1;
       padding: 10px 8px;
       font-size: 0.8rem;
       border: 2px solid #444;
-      background: rgba(255,255,255,0.05);
+      background: rgba(255, 255, 255, 0.05);
       color: #fff;
       border-radius: 8px;
       cursor: pointer;
     }
-    .rhythm-btn.active { border-color: #e94560; background: rgba(233, 69, 96, 0.3); }
-    .metronome-row { display: flex; align-items: center; gap: 12px; justify-content: center; }
+
+    .rhythm-btn.active {
+      border-color: #e94560;
+      background: rgba(233, 69, 96, 0.3);
+    }
+
+    .metronome-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: center;
+    }
+
     .metronome-indicator {
-      width: 50px; height: 50px; border-radius: 50%;
-      background: #333; border: 3px solid #00ff88;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #333;
+      border: 3px solid #00ff88;
     }
-    .metronome-indicator.beat { background: #00ff88; box-shadow: 0 0 20px rgba(0, 255, 136, 0.8); }
-    .bpm-display { font-size: 1.5rem; color: #00ff88; }
+
+    .metronome-indicator.beat {
+      background: #00ff88;
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+    }
+
+    .bpm-display {
+      font-size: 1.5rem;
+      color: #00ff88;
+    }
+
     .btn-metronome {
-      padding: 8px 15px; font-size: 0.85rem;
-      background: #333; color: #fff;
-      border: 1px solid #00ff88; border-radius: 8px; cursor: pointer;
+      padding: 8px 15px;
+      font-size: 0.85rem;
+      background: #333;
+      color: #fff;
+      border: 1px solid #00ff88;
+      border-radius: 8px;
+      cursor: pointer;
     }
-    .event-log { flex: 1; overflow-y: auto; max-height: 150px; }
+
+    .event-log {
+      flex: 1;
+      overflow-y: auto;
+      max-height: 150px;
+    }
+
     .event-item {
-      padding: 6px 10px; margin: 4px 0;
-      background: rgba(255,255,255,0.05);
-      border-radius: 5px; font-size: 0.8rem;
-      display: flex; gap: 10px;
+      padding: 6px 10px;
+      margin: 4px 0;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 5px;
+      font-size: 0.8rem;
+      display: flex;
+      gap: 10px;
     }
-    .event-time { color: #00ff88; font-family: monospace; min-width: 50px; }
-    .event-item.shock { border-left: 3px solid #ffd700; }
-    .event-item.epi { border-left: 3px solid #9b59b6; }
-    .event-item.rosc { border-left: 3px solid #2ecc71; }
+
+    .event-time {
+      color: #00ff88;
+      font-family: monospace;
+      min-width: 50px;
+    }
+
+    .event-item.shock {
+      border-left: 3px solid #ffd700;
+    }
+
+    .event-item.epi {
+      border-left: 3px solid #9b59b6;
+    }
+
+    .event-item.rosc {
+      border-left: 3px solid #2ecc71;
+    }
+
     .settings-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 0; font-size: 0.85rem; color: #a0a0a0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      font-size: 0.85rem;
+      color: #a0a0a0;
     }
+
     .toggle {
-      width: 40px; height: 22px; background: #333;
-      border-radius: 11px; cursor: pointer; position: relative;
+      width: 40px;
+      height: 22px;
+      background: #333;
+      border-radius: 11px;
+      cursor: pointer;
+      position: relative;
     }
-    .toggle.active { background: #00ff88; }
+
+    .toggle.active {
+      background: #00ff88;
+    }
+
     .toggle::after {
-      content: ''; position: absolute;
-      width: 18px; height: 18px; background: #fff;
-      border-radius: 50%; top: 2px; left: 2px; transition: left 0.2s;
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: left 0.2s;
     }
-    .toggle.active::after { left: 20px; }
-    .volume-control { display: flex; align-items: center; gap: 8px; }
+
+    .toggle.active::after {
+      left: 20px;
+    }
+
+    .volume-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .volume-slider {
-      width: 80px; height: 4px; -webkit-appearance: none;
-      background: #333; border-radius: 2px;
+      width: 80px;
+      height: 4px;
+      -webkit-appearance: none;
+      background: #333;
+      border-radius: 2px;
     }
+
     .volume-slider::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 14px; height: 14px;
-      background: #00ff88; border-radius: 50%; cursor: pointer;
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: #00ff88;
+      border-radius: 50%;
+      cursor: pointer;
     }
+
     .footer {
-      grid-column: 1 / -1; text-align: center;
-      font-size: 0.7rem; color: #555; padding: 5px;
+      grid-column: 1 / -1;
+      text-align: center;
+      font-size: 0.7rem;
+      color: #555;
+      padding: 5px;
     }
+
     .alert-overlay {
-      display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.9); z-index: 1000;
-      justify-content: center; align-items: center; flex-direction: column;
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
     }
-    .alert-overlay.active { display: flex; animation: alert-flash 0.5s infinite; }
+
+    .alert-overlay.active {
+      display: flex;
+      animation: alert-flash 0.5s infinite;
+    }
+
     @keyframes alert-flash {
-      0%, 100% { background: rgba(255, 0, 0, 0.9); }
-      50% { background: rgba(0, 0, 0, 0.9); }
+
+      0%,
+      100% {
+        background: rgba(255, 0, 0, 0.9);
+      }
+
+      50% {
+        background: rgba(0, 0, 0, 0.9);
+      }
     }
-    .alert-content { text-align: center; }
-    .alert-time { font-size: 3rem; color: #00ff88; font-family: 'Courier New', monospace; margin-bottom: 20px; }
-    .alert-title { font-size: 4rem; font-weight: bold; color: #fff; margin-bottom: 15px; }
-    .alert-message { font-size: 2rem; color: #ffd700; margin-bottom: 30px; white-space: pre-line; }
+
+    .alert-content {
+      text-align: center;
+    }
+
+    .alert-time {
+      font-size: 3rem;
+      color: #00ff88;
+      font-family: 'Courier New', monospace;
+      margin-bottom: 20px;
+    }
+
+    .alert-title {
+      font-size: 4rem;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 15px;
+    }
+
+    .alert-message {
+      font-size: 2rem;
+      color: #ffd700;
+      margin-bottom: 30px;
+      white-space: pre-line;
+    }
+
     .btn-dismiss {
-      padding: 25px 60px; font-size: 2rem; font-weight: bold;
+      padding: 25px 60px;
+      font-size: 2rem;
+      font-weight: bold;
       background: linear-gradient(135deg, #00ff88, #00cc6a);
-      color: #000; border: none; border-radius: 15px; cursor: pointer;
+      color: #000;
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
       animation: pulse-btn 1s infinite;
     }
-    @keyframes pulse-btn { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-    .switch-indicator {
-      display: none; position: fixed; bottom: 20px; left: 50%;
-      transform: translateX(-50%); background: rgba(255, 107, 107, 0.9);
-      padding: 15px 40px; border-radius: 30px;
-      font-size: 1.2rem; font-weight: bold;
-      animation: switch-flash 0.5s infinite; z-index: 100;
+
+    @keyframes pulse-btn {
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.05);
+      }
     }
-    .switch-indicator.active { display: block; }
-    @keyframes switch-flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    .switch-indicator {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 107, 107, 0.9);
+      padding: 15px 40px;
+      border-radius: 30px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      animation: switch-flash 0.5s infinite;
+      z-index: 100;
+    }
+
+    .switch-indicator.active {
+      display: block;
+    }
+
+    @keyframes switch-flash {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
   </style>
 </head>
+
 <body>
   <div class="alert-overlay" id="alertOverlay">
     <div class="alert-content">
@@ -483,6 +801,9 @@
       if (!state.audioContext) {
         state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
       }
+      if (state.audioContext.state === 'suspended') {
+        state.audioContext.resume();
+      }
 
       if (state.totalSeconds === 0) {
         speak('急救開始！計時啟動，請確認角色');
@@ -688,6 +1009,9 @@
       if (!state.audioContext) {
         state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
       }
+      if (state.audioContext.state === 'suspended') {
+        state.audioContext.resume();
+      }
       const interval = (60 / CONFIG.BPM) * 1000;
       state.metronomeInterval = setInterval(() => {
         elements.metronomeIndicator.classList.add('beat');
@@ -737,7 +1061,7 @@
         dismissAlert();
         return;
       }
-      switch(e.key.toLowerCase()) {
+      switch (e.key.toLowerCase()) {
         case ' ':
         case 'enter':
           e.preventDefault();
@@ -756,8 +1080,9 @@
 
     // ============ Init ============
     if ('wakeLock' in navigator) {
-      navigator.wakeLock.request('screen').catch(() => {});
+      navigator.wakeLock.request('screen').catch(() => { });
     }
   </script>
 </body>
+
 </html>
