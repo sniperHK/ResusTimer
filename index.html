@@ -527,6 +527,84 @@
         opacity: 0.5;
       }
     }
+
+    /* 心律選擇按鈕樣式 */
+    .rhythm-selection {
+      margin: 20px 0;
+    }
+
+    .rhythm-prompt {
+      font-size: 1.5rem;
+      color: #ffd700;
+      margin-bottom: 20px;
+    }
+
+    .rhythm-options {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-rhythm-select {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 30px;
+      border: 3px solid #fff;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+      min-width: 140px;
+    }
+
+    .btn-rhythm-select.shockable {
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      color: #000;
+    }
+
+    .btn-rhythm-select.non-shockable {
+      background: linear-gradient(135deg, #666, #444);
+      color: #fff;
+    }
+
+    .btn-rhythm-select:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+    }
+
+    .rhythm-icon {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+    }
+
+    .rhythm-name {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .rhythm-desc {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    .switch-reminder {
+      margin-top: 25px;
+      padding: 15px 30px;
+      background: rgba(255, 107, 107, 0.8);
+      border-radius: 10px;
+      font-size: 1.8rem;
+      font-weight: bold;
+      animation: switch-flash 0.5s infinite;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .switch-icon {
+      font-size: 2rem;
+    }
   </style>
 </head>
 
@@ -536,7 +614,32 @@
       <div class="alert-time" id="alertTime">02:00</div>
       <div class="alert-title" id="alertTitle">停止壓胸！</div>
       <div class="alert-message" id="alertMessage">確認心律</div>
-      <button class="btn-dismiss" onclick="dismissAlert()">✓ 已完成，繼續急救</button>
+
+      <div class="rhythm-selection">
+        <p class="rhythm-prompt">請選擇心律檢查結果：</p>
+        <div class="rhythm-options">
+          <button class="btn-rhythm-select shockable" onclick="selectRhythmAndDismiss('VT/VF')">
+            <span class="rhythm-icon">⚡</span>
+            <span class="rhythm-name">VT/VF</span>
+            <span class="rhythm-desc">可電擊心律</span>
+          </button>
+          <button class="btn-rhythm-select non-shockable" onclick="selectRhythmAndDismiss('Asystole')">
+            <span class="rhythm-icon">―</span>
+            <span class="rhythm-name">Asystole</span>
+            <span class="rhythm-desc">心跳停止</span>
+          </button>
+          <button class="btn-rhythm-select non-shockable" onclick="selectRhythmAndDismiss('PEA')">
+            <span class="rhythm-icon">〰️</span>
+            <span class="rhythm-name">PEA</span>
+            <span class="rhythm-desc">無脈搏電氣活動</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="switch-reminder">
+        <span class="switch-icon">🔄</span>
+        <span>請換手壓胸！</span>
+      </div>
     </div>
   </div>
   <div class="switch-indicator" id="switchIndicator">🔄 換手壓胸！</div>
@@ -545,7 +648,7 @@
     <div class="header">
       <h1>CPR 語音引導計時器 <small style="font-size:0.6em; color:#666;">v2.1</small></h1>
       <div class="header-controls">
-        <button class="btn-sm btn-test" onclick="fastForward(60)">⏩ +1:00</button>
+        <button class="btn-sm btn-test" onclick="fastForward(20)">⏩ +0:20</button>
         <button class="btn-sm" onclick="toggleFullscreen()">⛶ 全螢幕</button>
       </div>
     </div>
@@ -642,7 +745,7 @@
     // ============ Configuration ============
     const CONFIG = {
       CYCLE_DURATION: 120,    // 2 minutes per cycle
-      EPI_INTERVAL: 180,      // Epi every 3-5 min (≥3 min at next rhythm check)
+      EPI_MIN_INTERVAL: 180,  // Epi minimum interval: 3 min (ACLS guideline: every 3-5 min)
       FIRST_EPI_TIME: 120,    // First Epi eligible at 2 min (after 1st rhythm check)
       BPM: 110
     };
@@ -706,8 +809,25 @@
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'zh-TW';
         utterance.volume = state.volume;
+        utterance.rate = 0.9; // 稍微慢一點，更清楚
+
+        // 嘗試使用台灣中文語音
+        const voices = speechSynthesis.getVoices();
+        const twVoice = voices.find(v => v.lang === 'zh-TW') ||
+                       voices.find(v => v.lang.startsWith('zh'));
+        if (twVoice) {
+          utterance.voice = twVoice;
+        }
+
         speechSynthesis.speak(utterance);
       }
+    }
+
+    // 確保語音已載入
+    if ('speechSynthesis' in window) {
+      speechSynthesis.addEventListener('voiceschanged', () => {
+        // 語音列表已更新
+      });
     }
 
     function playAudio(filename) {
@@ -736,15 +856,16 @@
       const t = state.totalSeconds;
 
       // First Epi: after first rhythm check (2 min) for any rhythm
-      // For VF/pVT: typically after 2nd shock (around 2-4 min)
-      // For PEA/Asystole: ASAP after rhythm identified
+      // ACLS guideline: Epinephrine every 3-5 minutes
+      // Implementation: minimum 3 min interval, check at every rhythm check (every 2 min)
 
       if (state.lastEpiTime === null) {
-        // Never given - due if we're past first eligible time
+        // Never given - due if we're at or past first rhythm check
         return t >= CONFIG.FIRST_EPI_TIME;
       } else {
-        // Already given - due if 3-5 min (use 4 min) have passed
-        return (t - state.lastEpiTime) >= CONFIG.EPI_INTERVAL;
+        // Already given - due if at least 3 min (180 sec) have passed
+        // This ensures "隔循環" - skip at least one cycle
+        return (t - state.lastEpiTime) >= CONFIG.EPI_MIN_INTERVAL;
       }
     }
 
@@ -753,8 +874,8 @@
         // First Epi at 2:00 (first rhythm check)
         return Math.max(0, CONFIG.FIRST_EPI_TIME - state.totalSeconds);
       } else {
-        // Next Epi 4 min after last
-        const nextAt = state.lastEpiTime + CONFIG.EPI_INTERVAL;
+        // Next Epi at least 3 min after last
+        const nextAt = state.lastEpiTime + CONFIG.EPI_MIN_INTERVAL;
         return Math.max(0, nextAt - state.totalSeconds);
       }
     }
@@ -782,13 +903,43 @@
       elements.switchIndicator.classList.add('active');
     }
 
+    function selectRhythmAndDismiss(selectedRhythm) {
+      // 記錄選擇的心律
+      const isShockable = selectedRhythm === 'VT/VF';
+      state.rhythm = isShockable ? 'shockable' : 'non-shockable';
+
+      // 更新心律顯示
+      elements.rhythmDisplay.textContent = selectedRhythm;
+      document.querySelectorAll('.rhythm-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.rhythm === state.rhythm);
+      });
+
+      // 記錄事件
+      addEvent(`心律檢查: ${selectedRhythm}`);
+
+      // 關閉警示並換手
+      dismissAlert();
+
+      // 語音提示
+      if (isShockable) {
+        speak('可電擊心律，考慮電擊後立即恢復壓胸');
+      } else {
+        speak('不可電擊心律，立即恢復壓胸');
+      }
+    }
+
     function dismissAlert() {
       state.alertActive = false;
       elements.alertOverlay.classList.remove('active');
       elements.switchIndicator.classList.remove('active');
+
+      // 換手
       state.compressorNumber++;
       elements.compressorNumber.textContent = `#${state.compressorNumber}`;
       addEvent(`換手 → #${state.compressorNumber}`);
+
+      // 重置倒數計時器為新的 2 分鐘循環
+      state.cycleSeconds = 0;
     }
 
     // ============ Timer Functions ============
@@ -851,12 +1002,17 @@
     }
 
     function tick() {
+      // 總時間永遠繼續計時
       state.totalSeconds++;
-      state.cycleSeconds++;
 
-      if (state.cycleSeconds >= CONFIG.CYCLE_DURATION) {
-        state.cycleSeconds = 0;
-        state.cycleNumber++;
+      // 倒數計時只在非警示狀態時運行
+      if (!state.alertActive) {
+        state.cycleSeconds++;
+
+        if (state.cycleSeconds >= CONFIG.CYCLE_DURATION) {
+          state.cycleSeconds = 0;
+          state.cycleNumber++;
+        }
       }
 
       checkEvents();
@@ -950,14 +1106,16 @@
     function fastForward(seconds) {
       for (let i = 0; i < seconds; i++) {
         state.totalSeconds++;
-        state.cycleSeconds++;
-        if (state.cycleSeconds >= CONFIG.CYCLE_DURATION) {
-          state.cycleSeconds = 0;
-          state.cycleNumber++;
+        if (!state.alertActive) {
+          state.cycleSeconds++;
+          if (state.cycleSeconds >= CONFIG.CYCLE_DURATION) {
+            state.cycleSeconds = 0;
+            state.cycleNumber++;
+          }
         }
+        // Check events at each second to catch rhythm checks
+        checkEvents();
       }
-      // Check events at the final time point
-      checkEvents();
       updateNextEpiDisplay();
       updateDisplay();
       addEvent(`⏩ +${seconds}s`);
@@ -1056,10 +1214,20 @@
 
     // ============ Keyboard ============
     document.addEventListener('keydown', (e) => {
-      if (state.alertActive && (e.key === ' ' || e.key === 'Enter')) {
-        e.preventDefault();
-        dismissAlert();
-        return;
+      // 警示狀態時，必須用滑鼠選擇心律，不能用鍵盤跳過
+      if (state.alertActive) {
+        // 允許使用數字鍵快速選擇心律
+        if (e.key === '1') {
+          e.preventDefault();
+          selectRhythmAndDismiss('VT/VF');
+        } else if (e.key === '2') {
+          e.preventDefault();
+          selectRhythmAndDismiss('Asystole');
+        } else if (e.key === '3') {
+          e.preventDefault();
+          selectRhythmAndDismiss('PEA');
+        }
+        return; // 阻止其他按鍵
       }
       switch (e.key.toLowerCase()) {
         case ' ':
