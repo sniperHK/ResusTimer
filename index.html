@@ -64,6 +64,15 @@
       background: rgba(255, 255, 255, 0.2);
     }
 
+    .btn-reset-header {
+      background: rgba(255, 107, 107, 0.3);
+      border: 1px solid #ff6b6b;
+    }
+
+    .btn-reset-header:hover {
+      background: rgba(255, 107, 107, 0.5);
+    }
+
     .btn-test {
       background: #ff9800;
       color: #000;
@@ -605,6 +614,71 @@
     .switch-icon {
       font-size: 2rem;
     }
+
+    /* Epinephrine 警示按鈕樣式 */
+    .epi-reminder {
+      margin-bottom: 20px;
+    }
+
+    .btn-epi-alert {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 40px;
+      background: linear-gradient(135deg, #9b59b6, #8e44ad);
+      border: 3px solid #fff;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+      animation: epi-pulse 1s infinite;
+    }
+
+    .btn-epi-alert:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 30px rgba(155, 89, 182, 0.8);
+    }
+
+    .btn-epi-alert.given {
+      background: linear-gradient(135deg, #27ae60, #2ecc71);
+      animation: none;
+    }
+
+    @keyframes epi-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.7); }
+      50% { box-shadow: 0 0 30px 10px rgba(155, 89, 182, 0.4); }
+    }
+
+    .epi-icon {
+      font-size: 2.5rem;
+      margin-bottom: 5px;
+    }
+
+    .epi-text {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .epi-hint {
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+      margin-top: 5px;
+    }
+
+    .btn-epi-alert.given .epi-text {
+      text-decoration: line-through;
+    }
+
+    .btn-epi-alert.given .epi-hint {
+      display: none;
+    }
+
+    .btn-epi-alert.given::after {
+      content: '✓ 已給藥';
+      font-size: 1.2rem;
+      color: #fff;
+      margin-top: 5px;
+    }
   </style>
 </head>
 
@@ -614,6 +688,15 @@
       <div class="alert-time" id="alertTime">02:00</div>
       <div class="alert-title" id="alertTitle">停止壓胸！</div>
       <div class="alert-message" id="alertMessage">確認心律</div>
+
+      <!-- Epinephrine 提示區域（動態顯示） -->
+      <div class="epi-reminder" id="epiReminder" style="display:none;">
+        <button class="btn-epi-alert" id="btnEpiAlert" onclick="recordEpiFromAlert()">
+          <span class="epi-icon">💉</span>
+          <span class="epi-text">Epinephrine 1mg IV</span>
+          <span class="epi-hint">點擊確認已給藥</span>
+        </button>
+      </div>
 
       <div class="rhythm-selection">
         <p class="rhythm-prompt">請選擇心律檢查結果：</p>
@@ -648,6 +731,7 @@
     <div class="header">
       <h1>CPR 語音引導計時器 <small style="font-size:0.6em; color:#666;">v2.1</small></h1>
       <div class="header-controls">
+        <button class="btn-sm btn-reset-header" onclick="resetTimer()">🔄 重置</button>
         <button class="btn-sm btn-test" onclick="fastForward(20)">⏩ +0:20</button>
         <button class="btn-sm" onclick="toggleFullscreen()">⛶ 全螢幕</button>
       </div>
@@ -671,7 +755,6 @@
         <button class="btn btn-shock" onclick="recordShock()">⚡ 電擊</button>
         <button class="btn btn-epi" onclick="recordEpinephrine()">💉 Epi</button>
         <button class="btn btn-rosc" onclick="recordROSC()">💚 ROSC</button>
-        <button class="btn btn-reset" onclick="resetTimer()">重置</button>
       </div>
     </div>
 
@@ -793,7 +876,9 @@
       alertTime: document.getElementById('alertTime'),
       switchIndicator: document.getElementById('switchIndicator'),
       compressorNumber: document.getElementById('compressorNumber'),
-      epiStatus: document.getElementById('epiStatus')
+      epiStatus: document.getElementById('epiStatus'),
+      epiReminder: document.getElementById('epiReminder'),
+      btnEpiAlert: document.getElementById('btnEpiAlert')
     };
 
     // ============ Utility Functions ============
@@ -893,14 +978,37 @@
     }
 
     // ============ Alert System ============
-    function showAlert(title, message) {
+    function showAlert(title, message, showEpi = false) {
       if (!state.settings.visual) return;
       state.alertActive = true;
+      state.epiGivenThisAlert = false;  // 追蹤此次警示是否已給 Epi
       elements.alertTime.textContent = formatTime(state.totalSeconds);
       elements.alertTitle.textContent = title;
       elements.alertMessage.textContent = message;
       elements.alertOverlay.classList.add('active');
       elements.switchIndicator.classList.add('active');
+
+      // 控制 Epinephrine 提示按鈕的顯示
+      if (showEpi) {
+        elements.epiReminder.style.display = 'block';
+        elements.btnEpiAlert.classList.remove('given');
+      } else {
+        elements.epiReminder.style.display = 'none';
+      }
+    }
+
+    // 從警示畫面記錄 Epinephrine
+    function recordEpiFromAlert() {
+      if (state.epiGivenThisAlert) return; // 避免重複給藥
+      state.epiGivenThisAlert = true;
+      state.epiCount++;
+      state.lastEpiTime = state.totalSeconds;
+      elements.epiCount.textContent = state.epiCount;
+      elements.epiStatus.classList.remove('epi-due');
+      elements.btnEpiAlert.classList.add('given');
+      addEvent(`💉 Epi #${state.epiCount}`, 'epi');
+      speak('Epi 已給予');
+      updateNextEpiDisplay();
     }
 
     function selectRhythmAndDismiss(selectedRhythm) {
@@ -1047,17 +1155,14 @@
 
     function handleRhythmCheck() {
       const t = state.totalSeconds;
-      const mins = Math.floor(t / 60);
 
       // Build alert message dynamically
       let title = '停止壓胸！';
-      let messages = ['確認心律', '換手壓胸'];
+      let messages = ['確認心律'];
 
       // Check if Epi is due
       const epiDue = isEpiDue();
-      if (epiDue) {
-        messages.unshift('💉 Epinephrine 1mg IV');
-      }
+      // 如果 Epi due，會在警示畫面顯示按鈕，不在 message 中顯示
 
       // For shockable rhythm, suggest shock
       if (state.rhythm === 'shockable') {
@@ -1071,20 +1176,20 @@
 
       const message = messages.join('\n');
 
-      // Voice
-      let voiceText = `${mins}分鐘，停止壓胸，確認心律`;
-      if (epiDue) voiceText += '，Epinephrine 1mg IV';
+      // Voice - 不播報總時間，只提示動作
+      let voiceText = '停止壓胸，確認心律';
+      if (epiDue) voiceText += '，Epinephrine';
       speak(voiceText);
 
       showPrompt(voiceText);
-      showAlert(title, message);
+      showAlert(title, message, epiDue);  // 傳遞 epiDue 參數
       addEvent(`循環${state.cycleNumber} - 心律檢查${epiDue ? ' (Epi due)' : ''}`);
     }
 
     function showMilestone(text) {
       speak(text);
       showPrompt(text);
-      showAlert('里程碑', text);
+      showAlert('里程碑', text, false);  // 里程碑不顯示 Epi
       addEvent(text);
     }
 
