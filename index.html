@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CPR 語音引導計時器 v2.1</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      height: 100vh;
+      overflow: hidden;
+      color: #fff;
+    }
+
+    .app-container {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      grid-template-rows: auto 1fr auto;
+      height: 100vh;
+      padding: 10px;
+      gap: 10px;
+    }
+
+    .header {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 15px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 10px;
+    }
+
+    .header h1 {
+      font-size: 1.2rem;
+      color: #e94560;
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn-sm {
+      padding: 8px 15px;
+      font-size: 0.85rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .btn-sm:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-reset-header {
+      background: rgba(255, 107, 107, 0.3);
+      border: 1px solid #ff6b6b;
+    }
+
+    .btn-reset-header:hover {
+      background: rgba(255, 107, 107, 0.5);
+    }
+
+    .btn-test {
+      background: #ff9800;
+      color: #000;
+    }
+
+    .main-area {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .timer-display {
+      text-align: center;
+    }
+
+    .main-timer {
+      font-size: 10rem;
+      font-weight: bold;
+      font-family: 'Courier New', monospace;
+      color: #00ff88;
+      text-shadow: 0 0 40px rgba(0, 255, 136, 0.6);
+      line-height: 1;
+    }
+
+    .timer-info {
+      display: flex;
+      gap: 30px;
+      justify-content: center;
+      margin-top: 10px;
+      font-size: 1.3rem;
+    }
+
+    .timer-info span {
+      color: #a0a0a0;
+    }
+
+    .timer-info .value {
+      color: #ffd700;
+      font-family: 'Courier New', monospace;
+    }
+
+    .voice-prompt {
+      background: rgba(233, 69, 96, 0.2);
+      border: 2px solid #e94560;
+      border-radius: 12px;
+      padding: 15px 30px;
+      text-align: center;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 700px;
+      width: 100%;
+    }
+
+    .voice-prompt.active {
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.7);
+      }
+
+      50% {
+        box-shadow: 0 0 20px 5px rgba(233, 69, 96, 0.3);
+      }
+    }
+
+    .voice-prompt p {
+      font-size: 1.4rem;
+      margin: 0;
+    }
+
+    .controls {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn {
+      padding: 15px 35px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .btn:hover {
+      transform: scale(1.05);
+    }
+
+    .btn-start {
+      background: linear-gradient(135deg, #00ff88, #00cc6a);
+      color: #000;
+    }
+
+    .btn-stop {
+      background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+      color: #fff;
+    }
+
+    .btn-shock {
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      color: #000;
+    }
+
+    .btn-epi {
+      background: linear-gradient(135deg, #9b59b6, #8e44ad);
+      color: #fff;
+    }
+
+    .btn-rosc {
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+      color: #fff;
+    }
+
+    .btn-reset {
+      background: #444;
+      color: #fff;
+    }
+
+    .side-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow-y: auto;
+    }
+
+    .panel-section {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .panel-section h3 {
+      font-size: 0.9rem;
+      color: #ffd700;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .status-item {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .status-item .label {
+      font-size: 0.75rem;
+      color: #a0a0a0;
+    }
+
+    .status-item .value {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .status-item.highlight {
+      background: rgba(233, 69, 96, 0.3);
+      border: 1px solid #e94560;
+    }
+
+    .status-item.epi-due {
+      animation: epi-alert 1s infinite;
+    }
+
+    @keyframes epi-alert {
+
+      0%,
+      100% {
+        background: rgba(155, 89, 182, 0.3);
+      }
+
+      50% {
+        background: rgba(155, 89, 182, 0.6);
+      }
+    }
+
+    .rhythm-btns {
+      display: flex;
+      gap: 8px;
+    }
+
+    .rhythm-btn {
+      flex: 1;
+      padding: 10px 8px;
+      font-size: 0.8rem;
+      border: 2px solid #444;
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .rhythm-btn.active {
+      border-color: #e94560;
+      background: rgba(233, 69, 96, 0.3);
+    }
+
+    .metronome-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .metronome-indicator {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #333;
+      border: 3px solid #00ff88;
+    }
+
+    .metronome-indicator.beat {
+      background: #00ff88;
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+    }
+
+    .bpm-display {
+      font-size: 1.5rem;
+      color: #00ff88;
+    }
+
+    .btn-metronome {
+      padding: 8px 15px;
+      font-size: 0.85rem;
+      background: #333;
+      color: #fff;
+      border: 1px solid #00ff88;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .event-log {
+      flex: 1;
+      overflow-y: auto;
+      max-height: 150px;
+    }
+
+    .event-item {
+      padding: 6px 10px;
+      margin: 4px 0;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 5px;
+      font-size: 0.8rem;
+      display: flex;
+      gap: 10px;
+    }
+
+    .event-time {
+      color: #00ff88;
+      font-family: monospace;
+      min-width: 50px;
+    }
+
+    .event-item.shock {
+      border-left: 3px solid #ffd700;
+    }
+
+    .event-item.epi {
+      border-left: 3px solid #9b59b6;
+    }
+
+    .event-item.rosc {
+      border-left: 3px solid #2ecc71;
+    }
+
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      font-size: 0.85rem;
+      color: #a0a0a0;
+    }
+
+    .toggle {
+      width: 40px;
+      height: 22px;
+      background: #333;
+      border-radius: 11px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .toggle.active {
+      background: #00ff88;
+    }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: left 0.2s;
+    }
+
+    .toggle.active::after {
+      left: 20px;
+    }
+
+    .volume-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .volume-slider {
+      width: 80px;
+      height: 4px;
+      -webkit-appearance: none;
+      background: #333;
+      border-radius: 2px;
+    }
+
+    .volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: #00ff88;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .footer {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-size: 0.7rem;
+      color: #555;
+      padding: 5px;
+    }
+
+    .alert-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+    }
+
+    .alert-overlay.active {
+      display: flex;
+      animation: alert-flash 0.5s infinite;
+    }
+
+    @keyframes alert-flash {
+
+      0%,
+      100% {
+        background: rgba(255, 0, 0, 0.9);
+      }
+
+      50% {
+        background: rgba(0, 0, 0, 0.9);
+      }
+    }
+
+    .alert-content {
+      text-align: center;
+    }
+
+    .alert-time {
+      font-size: 3rem;
+      color: #00ff88;
+      font-family: 'Courier New', monospace;
+      margin-bottom: 20px;
+    }
+
+    .alert-title {
+      font-size: 4rem;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 15px;
+    }
+
+    .alert-message {
+      font-size: 2rem;
+      color: #ffd700;
+      margin-bottom: 30px;
+      white-space: pre-line;
+    }
+
+    .btn-dismiss {
+      padding: 25px 60px;
+      font-size: 2rem;
+      font-weight: bold;
+      background: linear-gradient(135deg, #00ff88, #00cc6a);
+      color: #000;
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
+      animation: pulse-btn 1s infinite;
+    }
+
+    @keyframes pulse-btn {
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.05);
+      }
+    }
+
+    .switch-indicator {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 107, 107, 0.9);
+      padding: 15px 40px;
+      border-radius: 30px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      animation: switch-flash 0.5s infinite;
+      z-index: 100;
+    }
+
+    .switch-indicator.active {
+      display: block;
+    }
+
+    @keyframes switch-flash {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.5;
+      }
+    }
+
+    /* 心律選擇按鈕樣式 */
+    .rhythm-selection {
+      margin: 20px 0;
+    }
+
+    .rhythm-prompt {
+      font-size: 1.5rem;
+      color: #ffd700;
+      margin-bottom: 20px;
+    }
+
+    .rhythm-options {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-rhythm-select {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 30px;
+      border: 3px solid #fff;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+      min-width: 140px;
+    }
+
+    .btn-rhythm-select.shockable {
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      color: #000;
+    }
+
+    .btn-rhythm-select.non-shockable {
+      background: linear-gradient(135deg, #666, #444);
+      color: #fff;
+    }
+
+    .btn-rhythm-select:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+    }
+
+    .rhythm-icon {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+    }
+
+    .rhythm-name {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .rhythm-desc {
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    .switch-reminder {
+      margin-top: 25px;
+      padding: 15px 30px;
+      background: rgba(255, 107, 107, 0.8);
+      border-radius: 10px;
+      font-size: 1.8rem;
+      font-weight: bold;
+      animation: switch-flash 0.5s infinite;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .switch-icon {
+      font-size: 2rem;
+    }
+
+    /* Epinephrine 警示按鈕樣式 */
+    .epi-reminder {
+      margin-bottom: 20px;
+    }
+
+    .btn-epi-alert {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 40px;
+      background: linear-gradient(135deg, #9b59b6, #8e44ad);
+      border: 3px solid #fff;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: all 0.3s;
+      animation: epi-pulse 1s infinite;
+    }
+
+    .btn-epi-alert:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 30px rgba(155, 89, 182, 0.8);
+    }
+
+    .btn-epi-alert.given {
+      background: linear-gradient(135deg, #27ae60, #2ecc71);
+      animation: none;
+    }
+
+    @keyframes epi-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.7); }
+      50% { box-shadow: 0 0 30px 10px rgba(155, 89, 182, 0.4); }
+    }
+
+    .epi-icon {
+      font-size: 2.5rem;
+      margin-bottom: 5px;
+    }
+
+    .epi-text {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .epi-hint {
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+      margin-top: 5px;
+    }
+
+    .btn-epi-alert.given .epi-text {
+      text-decoration: line-through;
+    }
+
+    .btn-epi-alert.given .epi-hint {
+      display: none;
+    }
+
+    .btn-epi-alert.given::after {
+      content: '✓ 已給藥';
+      font-size: 1.2rem;
+      color: #fff;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="alert-overlay" id="alertOverlay">
+    <div class="alert-content">
+      <div class="alert-time" id="alertTime">02:00</div>
+      <div class="alert-title" id="alertTitle">停止壓胸！</div>
+      <div class="alert-message" id="alertMessage">確認心律</div>
+
+      <!-- Epinephrine 提示區域（動態顯示） -->
+      <div class="epi-reminder" id="epiReminder" style="display:none;">
+        <button class="btn-epi-alert" id="btnEpiAlert" onclick="recordEpiFromAlert()">
+          <span class="epi-icon">💉</span>
+          <span class="epi-text">Epinephrine 1mg IV</span>
+          <span class="epi-hint">點擊確認已給藥</span>
+        </button>
+      </div>
+
+      <div class="rhythm-selection">
+        <p class="rhythm-prompt">請選擇心律檢查結果：</p>
+        <div class="rhythm-options">
+          <button class="btn-rhythm-select shockable" onclick="selectRhythmAndDismiss('VT/VF')">
+            <span class="rhythm-icon">⚡</span>
+            <span class="rhythm-name">VT/VF</span>
+            <span class="rhythm-desc">可電擊心律</span>
+          </button>
+          <button class="btn-rhythm-select non-shockable" onclick="selectRhythmAndDismiss('Asystole')">
+            <span class="rhythm-icon">―</span>
+            <span class="rhythm-name">Asystole</span>
+            <span class="rhythm-desc">心跳停止</span>
+          </button>
+          <button class="btn-rhythm-select non-shockable" onclick="selectRhythmAndDismiss('PEA')">
+            <span class="rhythm-icon">〰️</span>
+            <span class="rhythm-name">PEA</span>
+            <span class="rhythm-desc">無脈搏電氣活動</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="switch-reminder">
+        <span class="switch-icon">🔄</span>
+        <span>請換手壓胸！</span>
+      </div>
+    </div>
+  </div>
+  <div class="switch-indicator" id="switchIndicator">🔄 換手壓胸！</div>
+
+  <div class="app-container">
+    <div class="header">
+      <h1>CPR 語音引導計時器 <small style="font-size:0.6em; color:#666;">v2.1</small></h1>
+      <div class="header-controls">
+        <button class="btn-sm btn-reset-header" onclick="resetTimer()">🔄 重置</button>
+        <button class="btn-sm btn-test" onclick="fastForward(20)">⏩ +0:20</button>
+        <button class="btn-sm" onclick="toggleFullscreen()">⛶ 全螢幕</button>
+      </div>
+    </div>
+
+    <div class="main-area">
+      <div class="timer-display">
+        <div class="main-timer" id="mainTimer">02:00</div>
+        <div class="timer-info">
+          <span>循環 <span class="value" id="cycleNumber">1</span></span>
+          <span>總時間 <span class="value" id="totalTimer">00:00</span></span>
+          <span>壓胸者 <span class="value" id="compressorNumber">#1</span></span>
+        </div>
+      </div>
+      <div class="voice-prompt" id="voicePrompt">
+        <p id="promptText">按下「開始急救」啟動計時器</p>
+      </div>
+      <div class="controls">
+        <button class="btn btn-start" id="btnStart" onclick="startTimer()">開始急救</button>
+        <button class="btn btn-stop" id="btnStop" onclick="stopTimer()" style="display:none;">暫停</button>
+        <button class="btn btn-shock" onclick="recordShock()">⚡ 電擊</button>
+        <button class="btn btn-epi" onclick="recordEpinephrine()">💉 Epi</button>
+        <button class="btn btn-rosc" onclick="recordROSC()">💚 ROSC</button>
+      </div>
+    </div>
+
+    <div class="side-panel">
+      <div class="panel-section">
+        <h3>狀態</h3>
+        <div class="status-grid">
+          <div class="status-item">
+            <div class="label">電擊</div>
+            <div class="value" id="shockCount">0</div>
+          </div>
+          <div class="status-item highlight" id="epiStatus">
+            <div class="label">Epi</div>
+            <div class="value" id="epiCount">0</div>
+          </div>
+          <div class="status-item">
+            <div class="label">下次 Epi</div>
+            <div class="value" id="nextEpiTime">--:--</div>
+          </div>
+          <div class="status-item">
+            <div class="label">心律</div>
+            <div class="value" id="rhythmDisplay">VF</div>
+          </div>
+        </div>
+        <div class="rhythm-btns" style="margin-top:10px;">
+          <button class="rhythm-btn active" data-rhythm="shockable" onclick="setRhythm('shockable')">VF/pVT</button>
+          <button class="rhythm-btn" data-rhythm="non-shockable" onclick="setRhythm('non-shockable')">PEA/Asys</button>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <h3>節拍器 (110 BPM)</h3>
+        <div class="metronome-row">
+          <div class="metronome-indicator" id="metronomeIndicator"></div>
+          <div class="bpm-display">110</div>
+          <button class="btn-metronome" id="btnMetronome" onclick="toggleMetronome()">啟動</button>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <h3>設定</h3>
+        <div class="settings-row">
+          <span>語音提示</span>
+          <div class="toggle active" id="toggleVoice" onclick="toggleSetting('voice')"></div>
+        </div>
+        <div class="settings-row">
+          <span>視覺警示</span>
+          <div class="toggle active" id="toggleVisual" onclick="toggleSetting('visual')"></div>
+        </div>
+        <div class="settings-row">
+          <span>音量</span>
+          <div class="volume-control">
+            <input type="range" class="volume-slider" min="0" max="100" value="80" onchange="setVolume(this.value)">
+            <span id="volumeValue">80%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section" style="flex:1;">
+        <h3>事件記錄</h3>
+        <div class="event-log" id="eventList"></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      專利：M646682、I844435 | 2025 AHA ACLS Guidelines | 僅供訓練用途
+    </div>
+  </div>
+
+  <script>
+    // ============ Configuration ============
+    const CONFIG = {
+      CYCLE_DURATION: 120,    // 2 minutes per cycle
+      EPI_MIN_INTERVAL: 180,  // Epi minimum interval: 3 min (ACLS guideline: every 3-5 min)
+      FIRST_EPI_TIME: 120,    // First Epi eligible at 2 min (after 1st rhythm check)
+      BPM: 110
+    };
+
+    // ============ State ============
+    let state = {
+      isRunning: false,
+      totalSeconds: 0,
+      cycleSeconds: 0,
+      cycleNumber: 1,
+      shockCount: 0,
+      epiCount: 0,
+      compressorNumber: 1,
+      lastEpiTime: null,      // null = never given
+      rhythm: 'shockable',
+      settings: { voice: true, visual: true },
+      volume: 0.8,
+      metronomeOn: false,
+      timerInterval: null,
+      metronomeInterval: null,
+      audioContext: null,
+      events: [],
+      alertActive: false,
+      processedTimes: new Set()  // Track which time points have been processed
+    };
+
+    // ============ DOM Elements ============
+    const elements = {
+      mainTimer: document.getElementById('mainTimer'),
+      totalTimer: document.getElementById('totalTimer'),
+      cycleNumber: document.getElementById('cycleNumber'),
+      shockCount: document.getElementById('shockCount'),
+      epiCount: document.getElementById('epiCount'),
+      nextEpiTime: document.getElementById('nextEpiTime'),
+      rhythmDisplay: document.getElementById('rhythmDisplay'),
+      promptText: document.getElementById('promptText'),
+      voicePrompt: document.getElementById('voicePrompt'),
+      btnStart: document.getElementById('btnStart'),
+      btnStop: document.getElementById('btnStop'),
+      metronomeIndicator: document.getElementById('metronomeIndicator'),
+      eventList: document.getElementById('eventList'),
+      alertOverlay: document.getElementById('alertOverlay'),
+      alertTitle: document.getElementById('alertTitle'),
+      alertMessage: document.getElementById('alertMessage'),
+      alertTime: document.getElementById('alertTime'),
+      switchIndicator: document.getElementById('switchIndicator'),
+      compressorNumber: document.getElementById('compressorNumber'),
+      epiStatus: document.getElementById('epiStatus'),
+      epiReminder: document.getElementById('epiReminder'),
+      btnEpiAlert: document.getElementById('btnEpiAlert')
+    };
+
+    // ============ Utility Functions ============
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function speak(text) {
+      if (!state.settings.voice) return;
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'zh-TW';
+        utterance.volume = state.volume;
+        utterance.rate = 0.9; // 稍微慢一點，更清楚
+
+        // 嘗試使用台灣中文語音
+        const voices = speechSynthesis.getVoices();
+        const twVoice = voices.find(v => v.lang === 'zh-TW') ||
+                       voices.find(v => v.lang.startsWith('zh'));
+        if (twVoice) {
+          utterance.voice = twVoice;
+        }
+
+        speechSynthesis.speak(utterance);
+      }
+    }
+
+    // 確保語音已載入
+    if ('speechSynthesis' in window) {
+      speechSynthesis.addEventListener('voiceschanged', () => {
+        // 語音列表已更新
+      });
+    }
+
+    function playAudio(filename) {
+      if (!state.settings.voice) return;
+      const audio = new Audio(`voice_mp3/${filename}`);
+      audio.volume = state.volume;
+      audio.play().catch(() => speak(filename.split('_').slice(2).join(' ')));
+    }
+
+    function addEvent(text, type = '') {
+      state.events.unshift({ time: formatTime(state.totalSeconds), text, type });
+      renderEvents();
+    }
+
+    function renderEvents() {
+      elements.eventList.innerHTML = state.events.slice(0, 20).map(e => `
+        <div class="event-item ${e.type}">
+          <span class="event-time">${e.time}</span>
+          <span>${e.text}</span>
+        </div>
+      `).join('');
+    }
+
+    // ============ Epi Logic (ACLS-based) ============
+    function isEpiDue() {
+      const t = state.totalSeconds;
+
+      // First Epi: after first rhythm check (2 min) for any rhythm
+      // ACLS guideline: Epinephrine every 3-5 minutes
+      // Implementation: minimum 3 min interval, check at every rhythm check (every 2 min)
+
+      if (state.lastEpiTime === null) {
+        // Never given - due if we're at or past first rhythm check
+        return t >= CONFIG.FIRST_EPI_TIME;
+      } else {
+        // Already given - due if at least 3 min (180 sec) have passed
+        // This ensures "隔循環" - skip at least one cycle
+        return (t - state.lastEpiTime) >= CONFIG.EPI_MIN_INTERVAL;
+      }
+    }
+
+    function getNextEpiTime() {
+      if (state.lastEpiTime === null) {
+        // First Epi at 2:00 (first rhythm check)
+        return Math.max(0, CONFIG.FIRST_EPI_TIME - state.totalSeconds);
+      } else {
+        // Next Epi at least 3 min after last
+        const nextAt = state.lastEpiTime + CONFIG.EPI_MIN_INTERVAL;
+        return Math.max(0, nextAt - state.totalSeconds);
+      }
+    }
+
+    function updateNextEpiDisplay() {
+      const remaining = getNextEpiTime();
+      if (remaining <= 0) {
+        elements.nextEpiTime.textContent = '現在!';
+        elements.epiStatus.classList.add('epi-due');
+      } else {
+        elements.nextEpiTime.textContent = formatTime(remaining);
+        // Flash if within 30 seconds
+        elements.epiStatus.classList.toggle('epi-due', remaining <= 30);
+      }
+    }
+
+    // ============ Alert System ============
+    function showAlert(title, message, showEpi = false) {
+      if (!state.settings.visual) return;
+      state.alertActive = true;
+      state.epiGivenThisAlert = false;  // 追蹤此次警示是否已給 Epi
+      elements.alertTime.textContent = formatTime(state.totalSeconds);
+      elements.alertTitle.textContent = title;
+      elements.alertMessage.textContent = message;
+      elements.alertOverlay.classList.add('active');
+      elements.switchIndicator.classList.add('active');
+
+      // 控制 Epinephrine 提示按鈕的顯示
+      if (showEpi) {
+        elements.epiReminder.style.display = 'block';
+        elements.btnEpiAlert.classList.remove('given');
+      } else {
+        elements.epiReminder.style.display = 'none';
+      }
+    }
+
+    // 從警示畫面記錄 Epinephrine
+    function recordEpiFromAlert() {
+      if (state.epiGivenThisAlert) return; // 避免重複給藥
+      state.epiGivenThisAlert = true;
+      state.epiCount++;
+      state.lastEpiTime = state.totalSeconds;
+      elements.epiCount.textContent = state.epiCount;
+      elements.epiStatus.classList.remove('epi-due');
+      elements.btnEpiAlert.classList.add('given');
+      addEvent(`💉 Epi #${state.epiCount}`, 'epi');
+      speak('Epi 已給予');
+      updateNextEpiDisplay();
+    }
+
+    function selectRhythmAndDismiss(selectedRhythm) {
+      // 記錄選擇的心律
+      const isShockable = selectedRhythm === 'VT/VF';
+      state.rhythm = isShockable ? 'shockable' : 'non-shockable';
+
+      // 更新心律顯示
+      elements.rhythmDisplay.textContent = selectedRhythm;
+      document.querySelectorAll('.rhythm-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.rhythm === state.rhythm);
+      });
+
+      // 記錄事件
+      addEvent(`心律檢查: ${selectedRhythm}`);
+
+      // 關閉警示並換手
+      dismissAlert();
+
+      // 語音提示
+      if (isShockable) {
+        speak('可電擊心律，考慮電擊後立即恢復壓胸');
+      } else {
+        speak('不可電擊心律，立即恢復壓胸');
+      }
+    }
+
+    function dismissAlert() {
+      state.alertActive = false;
+      elements.alertOverlay.classList.remove('active');
+      elements.switchIndicator.classList.remove('active');
+
+      // 換手
+      state.compressorNumber++;
+      elements.compressorNumber.textContent = `#${state.compressorNumber}`;
+      addEvent(`換手 → #${state.compressorNumber}`);
+
+      // 重置倒數計時器為新的 2 分鐘循環
+      state.cycleSeconds = 0;
+    }
+
+    // ============ Timer Functions ============
+    function startTimer() {
+      if (state.isRunning) return;
+      state.isRunning = true;
+      elements.btnStart.style.display = 'none';
+      elements.btnStop.style.display = 'inline-block';
+
+      if (!state.audioContext) {
+        state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (state.audioContext.state === 'suspended') {
+        state.audioContext.resume();
+      }
+
+      if (state.totalSeconds === 0) {
+        speak('急救開始！計時啟動，請確認角色');
+        showPrompt('急救開始！計時啟動，請確認角色');
+        addEvent('急救開始');
+      }
+
+      state.timerInterval = setInterval(tick, 1000);
+    }
+
+    function stopTimer() {
+      state.isRunning = false;
+      elements.btnStart.style.display = 'inline-block';
+      elements.btnStop.style.display = 'none';
+      clearInterval(state.timerInterval);
+      addEvent('暫停');
+    }
+
+    function resetTimer() {
+      stopTimer();
+      stopMetronome();
+      if (state.alertActive) dismissAlert();
+
+      state.totalSeconds = 0;
+      state.cycleSeconds = 0;
+      state.cycleNumber = 1;
+      state.shockCount = 0;
+      state.epiCount = 0;
+      state.compressorNumber = 1;
+      state.lastEpiTime = null;
+      state.events = [];
+      state.processedTimes = new Set();
+
+      elements.mainTimer.textContent = '02:00';
+      elements.totalTimer.textContent = '00:00';
+      elements.cycleNumber.textContent = '1';
+      elements.shockCount.textContent = '0';
+      elements.epiCount.textContent = '0';
+      elements.compressorNumber.textContent = '#1';
+      elements.nextEpiTime.textContent = '--:--';
+      elements.promptText.textContent = '按下「開始急救」啟動計時器';
+      elements.voicePrompt.classList.remove('active');
+      elements.epiStatus.classList.remove('epi-due');
+      renderEvents();
+    }
+
+    function tick() {
+      // 總時間永遠繼續計時
+      state.totalSeconds++;
+
+      // 倒數計時只在非警示狀態時運行
+      if (!state.alertActive) {
+        state.cycleSeconds++;
+
+        if (state.cycleSeconds >= CONFIG.CYCLE_DURATION) {
+          state.cycleSeconds = 0;
+          state.cycleNumber++;
+        }
+      }
+
+      checkEvents();
+      updateNextEpiDisplay();
+      updateDisplay();
+    }
+
+    // ============ Event Checking (ACLS Logic) ============
+    function checkEvents() {
+      const t = state.totalSeconds;
+
+      // Avoid processing same time twice
+      if (state.processedTimes.has(t)) return;
+      state.processedTimes.add(t);
+
+      // Pre-warning at 5 seconds before rhythm check
+      if ((t + 5) % CONFIG.CYCLE_DURATION === 0 && t >= CONFIG.CYCLE_DURATION - 5) {
+        speak('準備停止，準備心律檢查');
+        showPrompt('準備停止，準備心律檢查');
+      }
+
+      // Rhythm check every 2 minutes
+      if (t > 0 && t % CONFIG.CYCLE_DURATION === 0) {
+        handleRhythmCheck();
+      }
+
+      // Special milestones
+      if (t === 600) showMilestone('CPR 第10分鐘');
+      if (t === 1200) showMilestone('CPR 第20分鐘，考慮終止');
+      if (t === 1800) showMilestone('CPR 第30分鐘，考慮終止');
+    }
+
+    function handleRhythmCheck() {
+      const t = state.totalSeconds;
+
+      // Build alert message dynamically
+      let title = '停止壓胸！';
+      let messages = ['確認心律'];
+
+      // Check if Epi is due
+      const epiDue = isEpiDue();
+      // 如果 Epi due，會在警示畫面顯示按鈕，不在 message 中顯示
+
+      // For shockable rhythm, suggest shock
+      if (state.rhythm === 'shockable') {
+        messages.push('考慮電擊');
+      }
+
+      // Special considerations at 8 min for VF/pVT
+      if (t === 480 && state.rhythm === 'shockable') {
+        messages.push('考慮 Amiodarone');
+      }
+
+      const message = messages.join('\n');
+
+      // Voice - 不播報總時間，只提示動作
+      let voiceText = '停止壓胸，確認心律';
+      if (epiDue) voiceText += '，Epinephrine';
+      speak(voiceText);
+
+      showPrompt(voiceText);
+      showAlert(title, message, epiDue);  // 傳遞 epiDue 參數
+      addEvent(`循環${state.cycleNumber} - 心律檢查${epiDue ? ' (Epi due)' : ''}`);
+    }
+
+    function showMilestone(text) {
+      speak(text);
+      showPrompt(text);
+      showAlert('里程碑', text, false);  // 里程碑不顯示 Epi
+      addEvent(text);
+    }
+
+    function showPrompt(text) {
+      elements.promptText.textContent = text;
+      elements.voicePrompt.classList.add('active');
+      setTimeout(() => elements.voicePrompt.classList.remove('active'), 5000);
+    }
+
+    function updateDisplay() {
+      const remaining = CONFIG.CYCLE_DURATION - state.cycleSeconds;
+      elements.mainTimer.textContent = formatTime(remaining);
+      elements.totalTimer.textContent = formatTime(state.totalSeconds);
+      elements.cycleNumber.textContent = state.cycleNumber;
+      elements.shockCount.textContent = state.shockCount;
+      elements.epiCount.textContent = state.epiCount;
+    }
+
+    function fastForward(seconds) {
+      for (let i = 0; i < seconds; i++) {
+        state.totalSeconds++;
+        if (!state.alertActive) {
+          state.cycleSeconds++;
+          if (state.cycleSeconds >= CONFIG.CYCLE_DURATION) {
+            state.cycleSeconds = 0;
+            state.cycleNumber++;
+          }
+        }
+        // Check events at each second to catch rhythm checks
+        checkEvents();
+      }
+      updateNextEpiDisplay();
+      updateDisplay();
+      addEvent(`⏩ +${seconds}s`);
+    }
+
+    // ============ Actions ============
+    function recordShock() {
+      state.shockCount++;
+      elements.shockCount.textContent = state.shockCount;
+      addEvent(`⚡ 電擊 #${state.shockCount}`, 'shock');
+      speak('電擊完成，立即恢復壓胸');
+    }
+
+    function recordEpinephrine() {
+      state.epiCount++;
+      state.lastEpiTime = state.totalSeconds;
+      elements.epiCount.textContent = state.epiCount;
+      elements.epiStatus.classList.remove('epi-due');
+      addEvent(`💉 Epi #${state.epiCount}`, 'epi');
+      speak('Epi 已給予');
+      updateNextEpiDisplay();
+    }
+
+    function recordROSC() {
+      addEvent(`💚 ROSC`, 'rosc');
+      speak('恭喜！病人恢復自主循環');
+      stopTimer();
+      stopMetronome();
+      alert(`🎉 ROSC!\n急救時間: ${formatTime(state.totalSeconds)}\n電擊: ${state.shockCount}\nEpi: ${state.epiCount}`);
+    }
+
+    function setRhythm(rhythm) {
+      state.rhythm = rhythm;
+      document.querySelectorAll('.rhythm-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.rhythm === rhythm);
+      });
+      elements.rhythmDisplay.textContent = rhythm === 'shockable' ? 'VF' : 'PEA';
+      addEvent(`心律: ${rhythm === 'shockable' ? 'VF/pVT' : 'PEA/Asys'}`);
+    }
+
+    // ============ Metronome ============
+    function toggleMetronome() {
+      state.metronomeOn ? stopMetronome() : startMetronome();
+    }
+
+    function startMetronome() {
+      state.metronomeOn = true;
+      document.getElementById('btnMetronome').textContent = '停止';
+      if (!state.audioContext) {
+        state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (state.audioContext.state === 'suspended') {
+        state.audioContext.resume();
+      }
+      const interval = (60 / CONFIG.BPM) * 1000;
+      state.metronomeInterval = setInterval(() => {
+        elements.metronomeIndicator.classList.add('beat');
+        setTimeout(() => elements.metronomeIndicator.classList.remove('beat'), 100);
+        const osc = state.audioContext.createOscillator();
+        const gain = state.audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(state.audioContext.destination);
+        osc.frequency.value = 800;
+        gain.gain.setValueAtTime(state.volume * 0.4, state.audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, state.audioContext.currentTime + 0.1);
+        osc.start();
+        osc.stop(state.audioContext.currentTime + 0.1);
+      }, interval);
+    }
+
+    function stopMetronome() {
+      state.metronomeOn = false;
+      document.getElementById('btnMetronome').textContent = '啟動';
+      clearInterval(state.metronomeInterval);
+      elements.metronomeIndicator.classList.remove('beat');
+    }
+
+    // ============ Settings ============
+    function toggleSetting(setting) {
+      state.settings[setting] = !state.settings[setting];
+      document.getElementById(`toggle${setting.charAt(0).toUpperCase() + setting.slice(1)}`).classList.toggle('active', state.settings[setting]);
+    }
+
+    function setVolume(value) {
+      state.volume = value / 100;
+      document.getElementById('volumeValue').textContent = value + '%';
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    // ============ Keyboard ============
+    document.addEventListener('keydown', (e) => {
+      // 警示狀態時，必須用滑鼠選擇心律，不能用鍵盤跳過
+      if (state.alertActive) {
+        // 允許使用數字鍵快速選擇心律
+        if (e.key === '1') {
+          e.preventDefault();
+          selectRhythmAndDismiss('VT/VF');
+        } else if (e.key === '2') {
+          e.preventDefault();
+          selectRhythmAndDismiss('Asystole');
+        } else if (e.key === '3') {
+          e.preventDefault();
+          selectRhythmAndDismiss('PEA');
+        }
+        return; // 阻止其他按鍵
+      }
+      switch (e.key.toLowerCase()) {
+        case ' ':
+        case 'enter':
+          e.preventDefault();
+          state.isRunning ? stopTimer() : startTimer();
+          break;
+        case 's': recordShock(); break;
+        case 'e': recordEpinephrine(); break;
+        case 'm': toggleMetronome(); break;
+        case 'r':
+          if (e.ctrlKey || e.metaKey) { e.preventDefault(); resetTimer(); }
+          else recordROSC();
+          break;
+        case 'f': toggleFullscreen(); break;
+      }
+    });
+
+    // ============ Init ============
+    if ('wakeLock' in navigator) {
+      navigator.wakeLock.request('screen').catch(() => { });
+    }
+  </script>
+</body>
+
+</html>
