@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>CPR 語音引導計時器 v2.1</title>
+  <title>CPR 語音引導計時器 v2.2</title>
   <style>
     * {
       margin: 0;
@@ -357,6 +357,10 @@
       border-left: 3px solid #2ecc71;
     }
 
+    .event-item.amio {
+      border-left: 3px solid #ff5722;
+    }
+
     .settings-row {
       display: flex;
       justify-content: space-between;
@@ -679,6 +683,116 @@
       color: #fff;
       margin-top: 5px;
     }
+
+    /* 呼吸道模式切換 */
+    .airway-toggle {
+      display: flex;
+      gap: 5px;
+      margin-top: 8px;
+    }
+
+    .airway-btn {
+      flex: 1;
+      padding: 8px 5px;
+      font-size: 0.75rem;
+      border: 2px solid #444;
+      background: rgba(255, 255, 255, 0.05);
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .airway-btn.active {
+      border-color: #00bcd4;
+      background: rgba(0, 188, 212, 0.3);
+    }
+
+    /* 壓胸計數與通氣提示 */
+    .compression-counter {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 10px;
+    }
+
+    .compression-count {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #00ff88;
+      font-family: 'Courier New', monospace;
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .compression-label {
+      font-size: 0.8rem;
+      color: #a0a0a0;
+    }
+
+    .ventilation-prompt {
+      display: none;
+      padding: 15px 25px;
+      background: linear-gradient(135deg, #2196F3, #1976D2);
+      border-radius: 12px;
+      animation: vent-pulse 0.5s infinite;
+    }
+
+    .ventilation-prompt.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .ventilation-prompt .vent-icon {
+      font-size: 2rem;
+      margin-bottom: 5px;
+    }
+
+    .ventilation-prompt .vent-text {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    @keyframes vent-pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.7); }
+      50% { transform: scale(1.05); box-shadow: 0 0 20px 5px rgba(33, 150, 243, 0.4); }
+    }
+
+    /* 進階呼吸道模式的通氣指示器 */
+    .advanced-vent-indicator {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+      padding: 8px;
+      background: rgba(33, 150, 243, 0.2);
+      border: 1px solid #2196F3;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #2196F3;
+    }
+
+    .advanced-vent-indicator.active {
+      display: flex;
+    }
+
+    .advanced-vent-indicator.vent-now {
+      background: rgba(33, 150, 243, 0.8);
+      color: #fff;
+      animation: vent-flash 0.3s infinite;
+    }
+
+    @keyframes vent-flash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
   </style>
 </head>
 
@@ -729,7 +843,7 @@
 
   <div class="app-container">
     <div class="header">
-      <h1>CPR 語音引導計時器 <small style="font-size:0.6em; color:#666;">v2.1</small></h1>
+      <h1>CPR 語音引導計時器 <small style="font-size:0.6em; color:#666;">v2.2</small></h1>
       <div class="header-controls">
         <button class="btn-sm btn-reset-header" onclick="resetTimer()">🔄 重置</button>
         <button class="btn-sm btn-test" onclick="fastForward(20)">⏩ +0:20</button>
@@ -792,6 +906,34 @@
           <div class="bpm-display">110</div>
           <button class="btn-metronome" id="btnMetronome" onclick="toggleMetronome()">啟動</button>
         </div>
+
+        <!-- 呼吸道模式切換 -->
+        <div class="airway-toggle">
+          <button class="airway-btn active" data-mode="basic" onclick="setAirwayMode('basic')">
+            30:2 (BVM)
+          </button>
+          <button class="airway-btn" data-mode="advanced" onclick="setAirwayMode('advanced')">
+            進階呼吸道
+          </button>
+        </div>
+
+        <!-- 30:2 模式：壓胸計數 -->
+        <div class="compression-counter" id="compressionCounter">
+          <div>
+            <div class="compression-count" id="compressionCount">0</div>
+            <div class="compression-label">壓胸次數</div>
+          </div>
+          <div class="ventilation-prompt" id="ventilationPrompt">
+            <span class="vent-icon">💨</span>
+            <span class="vent-text">通氣 2 次！</span>
+          </div>
+        </div>
+
+        <!-- 進階呼吸道模式：通氣提示 -->
+        <div class="advanced-vent-indicator" id="advancedVentIndicator">
+          <span>💨</span>
+          <span id="ventCountdown">每 6 秒通氣</span>
+        </div>
       </div>
 
       <div class="panel-section">
@@ -828,9 +970,12 @@
     // ============ Configuration ============
     const CONFIG = {
       CYCLE_DURATION: 120,    // 2 minutes per cycle
-      EPI_MIN_INTERVAL: 180,  // Epi minimum interval: 3 min (ACLS guideline: every 3-5 min)
+      EPI_MIN_INTERVAL: 240,  // Epi minimum interval: 4 min (同仁建議：每4分鐘一支)
       FIRST_EPI_TIME: 120,    // First Epi eligible at 2 min (after 1st rhythm check)
-      BPM: 110
+      BPM: 110,
+      COMPRESSIONS_PER_CYCLE: 30,  // 30:2 壓胸通氣比
+      VENTILATION_COUNT: 2,        // 每次通氣次數
+      ADVANCED_AIRWAY_VENT_INTERVAL: 6  // 進階呼吸道：每6秒通氣
     };
 
     // ============ State ============
@@ -849,10 +994,18 @@
       metronomeOn: false,
       timerInterval: null,
       metronomeInterval: null,
+      ventilationInterval: null,  // 進階呼吸道通氣計時器
       audioContext: null,
       events: [],
       alertActive: false,
-      processedTimes: new Set()  // Track which time points have been processed
+      processedTimes: new Set(),  // Track which time points have been processed
+      // 呼吸道模式相關
+      airwayMode: 'basic',        // 'basic' = 30:2, 'advanced' = 持續壓胸+每6秒通氣
+      compressionCount: 0,        // 當前壓胸計數（30:2 模式用）
+      isVentilationPhase: false,  // 是否在通氣階段
+      // Amiodarone 追蹤
+      amiodaroneGiven: false,     // 是否已給 Amiodarone
+      amiodaroneCount: 0          // Amiodarone 給藥次數（最多 2 次：300mg + 150mg）
     };
 
     // ============ DOM Elements ============
@@ -1066,8 +1219,16 @@
 
       if (state.totalSeconds === 0) {
         speak('急救開始！計時啟動，請確認角色');
-        showPrompt('急救開始！計時啟動，請確認角色');
+        showPrompt('急救開始！確認角色、腳蹬、背板');
         addEvent('急救開始');
+
+        // 延遲提示檢查事項
+        setTimeout(() => {
+          showPrompt('📋 確認：腳蹬放置、背板墊好、壓胸深度 5-6 公分');
+          if (state.settings.voice) {
+            speak('確認腳蹬放置、背板墊好');
+          }
+        }, 3000);
       }
 
       state.timerInterval = setInterval(tick, 1000);
@@ -1082,6 +1243,12 @@
     }
 
     function resetTimer() {
+      // 重置前確認
+      if (state.totalSeconds > 0) {
+        const confirmReset = confirm(`⚠️ 確定要重置計時器嗎？\n\n目前急救時間：${formatTime(state.totalSeconds)}\n電擊次數：${state.shockCount}\nEpi 次數：${state.epiCount}\n\n所有記錄將被清除！`);
+        if (!confirmReset) return;
+      }
+
       stopTimer();
       stopMetronome();
       if (state.alertActive) dismissAlert();
@@ -1093,6 +1260,8 @@
       state.epiCount = 0;
       state.compressorNumber = 1;
       state.lastEpiTime = null;
+      state.amiodaroneGiven = false;
+      state.amiodaroneCount = 0;
       state.events = [];
       state.processedTimes = new Set();
 
@@ -1232,6 +1401,37 @@
       elements.shockCount.textContent = state.shockCount;
       addEvent(`⚡ 電擊 #${state.shockCount}`, 'shock');
       speak('電擊完成，立即恢復壓胸');
+
+      // Amiodarone 提示邏輯（根據電擊次數）
+      checkAmiodaronePrompt();
+    }
+
+    function checkAmiodaronePrompt() {
+      // 第 3 次電擊後提示 Amiodarone 300mg
+      if (state.shockCount === 3 && state.amiodaroneCount === 0 && state.rhythm === 'shockable') {
+        setTimeout(() => {
+          const giveAmio = confirm('💊 考慮給予 Amiodarone 300mg IV\n\n（持續 VF/pVT，第 3 次電擊後）\n\n點擊「確定」記錄已給藥');
+          if (giveAmio) {
+            recordAmiodarone(300);
+          }
+        }, 1000);
+      }
+      // 第 5 次電擊後提示 Amiodarone 150mg（若已給過第一劑）
+      else if (state.shockCount === 5 && state.amiodaroneCount === 1 && state.rhythm === 'shockable') {
+        setTimeout(() => {
+          const giveAmio = confirm('💊 考慮給予 Amiodarone 150mg IV\n\n（持續 VF/pVT，第 5 次電擊後）\n\n點擊「確定」記錄已給藥');
+          if (giveAmio) {
+            recordAmiodarone(150);
+          }
+        }, 1000);
+      }
+    }
+
+    function recordAmiodarone(dose) {
+      state.amiodaroneCount++;
+      addEvent(`💊 Amiodarone ${dose}mg`, 'amio');
+      speak(`Amiodarone ${dose} 毫克已給予`);
+      showPrompt(`💊 Amiodarone ${dose}mg 已給予`);
     }
 
     function recordEpinephrine() {
@@ -1249,7 +1449,44 @@
       speak('恭喜！病人恢復自主循環');
       stopTimer();
       stopMetronome();
-      alert(`🎉 ROSC!\n急救時間: ${formatTime(state.totalSeconds)}\n電擊: ${state.shockCount}\nEpi: ${state.epiCount}`);
+
+      // ROSC 後照護 Checklist
+      const roscSummary = `🎉 ROSC - 恢復自主循環！
+
+📊 急救摘要：
+• 急救時間：${formatTime(state.totalSeconds)}
+• 電擊次數：${state.shockCount}
+• Epi 次數：${state.epiCount}
+• Amiodarone：${state.amiodaroneCount > 0 ? state.amiodaroneCount + ' 劑' : '未使用'}
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+📋 ROSC 後照護 Checklist：
+
+□ 完整生命徵象 (Complete Vitals)
+   - BP / HR / RR / SpO2 / Temp
+
+□ 12-lead ECG
+   - 評估 STEMI / 心律
+
+□ 動脈血氣分析 (ABG)
+   - pH / PaCO2 / PaO2 / Lactate
+
+□ 建立進階呼吸道
+   - 考慮插管 / 確認 ETCO2
+
+□ 血管升壓劑
+   - 維持 MAP > 65 mmHg
+
+□ 目標體溫管理 (TTM)
+   - 考慮低溫治療
+
+□ 找出並治療原因
+   - 回顧 H's and T's
+
+□ 通知心導管室 / ICU`;
+
+      alert(roscSummary);
     }
 
     function setRhythm(rhythm) {
@@ -1261,41 +1498,164 @@
       addEvent(`心律: ${rhythm === 'shockable' ? 'VF/pVT' : 'PEA/Asys'}`);
     }
 
-    // ============ Metronome ============
+    // ============ Metronome & Ventilation ============
     function toggleMetronome() {
       state.metronomeOn ? stopMetronome() : startMetronome();
     }
 
     function startMetronome() {
       state.metronomeOn = true;
+      state.compressionCount = 0;
+      state.isVentilationPhase = false;
       document.getElementById('btnMetronome').textContent = '停止';
+      updateCompressionDisplay();
+
       if (!state.audioContext) {
         state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
       }
       if (state.audioContext.state === 'suspended') {
         state.audioContext.resume();
       }
+
       const interval = (60 / CONFIG.BPM) * 1000;
-      state.metronomeInterval = setInterval(() => {
-        elements.metronomeIndicator.classList.add('beat');
-        setTimeout(() => elements.metronomeIndicator.classList.remove('beat'), 100);
-        const osc = state.audioContext.createOscillator();
-        const gain = state.audioContext.createGain();
-        osc.connect(gain);
-        gain.connect(state.audioContext.destination);
-        osc.frequency.value = 800;
-        gain.gain.setValueAtTime(state.volume * 0.4, state.audioContext.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, state.audioContext.currentTime + 0.1);
-        osc.start();
-        osc.stop(state.audioContext.currentTime + 0.1);
-      }, interval);
+
+      if (state.airwayMode === 'basic') {
+        // 30:2 模式
+        state.metronomeInterval = setInterval(() => {
+          if (state.isVentilationPhase) return;
+
+          state.compressionCount++;
+          updateCompressionDisplay();
+
+          // 節拍器聲音和視覺
+          elements.metronomeIndicator.classList.add('beat');
+          setTimeout(() => elements.metronomeIndicator.classList.remove('beat'), 100);
+          playMetronomeBeep(800);
+
+          // 每 30 下提示通氣
+          if (state.compressionCount >= CONFIG.COMPRESSIONS_PER_CYCLE) {
+            triggerVentilationPrompt();
+          }
+        }, interval);
+      } else {
+        // 進階呼吸道模式：持續壓胸
+        state.metronomeInterval = setInterval(() => {
+          state.compressionCount++;
+          updateCompressionDisplay();
+          elements.metronomeIndicator.classList.add('beat');
+          setTimeout(() => elements.metronomeIndicator.classList.remove('beat'), 100);
+          playMetronomeBeep(800);
+        }, interval);
+
+        // 每 6 秒通氣提示
+        startAdvancedVentilation();
+      }
     }
 
     function stopMetronome() {
       state.metronomeOn = false;
+      state.compressionCount = 0;
+      state.isVentilationPhase = false;
       document.getElementById('btnMetronome').textContent = '啟動';
       clearInterval(state.metronomeInterval);
+      clearInterval(state.ventilationInterval);
       elements.metronomeIndicator.classList.remove('beat');
+      document.getElementById('ventilationPrompt').classList.remove('active');
+      document.getElementById('advancedVentIndicator').classList.remove('vent-now');
+      updateCompressionDisplay();
+    }
+
+    function playMetronomeBeep(frequency) {
+      const osc = state.audioContext.createOscillator();
+      const gain = state.audioContext.createGain();
+      osc.connect(gain);
+      gain.connect(state.audioContext.destination);
+      osc.frequency.value = frequency;
+      gain.gain.setValueAtTime(state.volume * 0.4, state.audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, state.audioContext.currentTime + 0.1);
+      osc.start();
+      osc.stop(state.audioContext.currentTime + 0.1);
+    }
+
+    function updateCompressionDisplay() {
+      document.getElementById('compressionCount').textContent = state.compressionCount;
+    }
+
+    // 30:2 通氣提示
+    function triggerVentilationPrompt() {
+      state.isVentilationPhase = true;
+      document.getElementById('ventilationPrompt').classList.add('active');
+
+      // 播放不同音調提示通氣
+      playMetronomeBeep(600);
+      if (state.settings.voice) {
+        speak('通氣');
+      }
+
+      // 2 秒後自動恢復（假設通氣完成）
+      setTimeout(() => {
+        document.getElementById('ventilationPrompt').classList.remove('active');
+        state.compressionCount = 0;
+        state.isVentilationPhase = false;
+        updateCompressionDisplay();
+      }, 2000);
+    }
+
+    // 進階呼吸道模式：每 6 秒通氣
+    function startAdvancedVentilation() {
+      const indicator = document.getElementById('advancedVentIndicator');
+      const countdown = document.getElementById('ventCountdown');
+      indicator.classList.add('active');
+
+      let ventTimer = CONFIG.ADVANCED_AIRWAY_VENT_INTERVAL;
+
+      state.ventilationInterval = setInterval(() => {
+        ventTimer--;
+        if (ventTimer <= 0) {
+          // 通氣提示
+          indicator.classList.add('vent-now');
+          countdown.textContent = '💨 通氣！';
+          playMetronomeBeep(600);
+          if (state.settings.voice) {
+            speak('通氣');
+          }
+
+          setTimeout(() => {
+            indicator.classList.remove('vent-now');
+            ventTimer = CONFIG.ADVANCED_AIRWAY_VENT_INTERVAL;
+            countdown.textContent = `${ventTimer} 秒後通氣`;
+          }, 800);
+        } else {
+          countdown.textContent = `${ventTimer} 秒後通氣`;
+        }
+      }, 1000);
+    }
+
+    // 切換呼吸道模式
+    function setAirwayMode(mode) {
+      const wasRunning = state.metronomeOn;
+      if (wasRunning) stopMetronome();
+
+      state.airwayMode = mode;
+      document.querySelectorAll('.airway-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+      });
+
+      // 切換顯示
+      const compressionCounter = document.getElementById('compressionCounter');
+      const advancedIndicator = document.getElementById('advancedVentIndicator');
+
+      if (mode === 'basic') {
+        compressionCounter.style.display = 'flex';
+        advancedIndicator.classList.remove('active');
+      } else {
+        compressionCounter.style.display = 'none';
+        // advancedIndicator 會在 startMetronome 時顯示
+      }
+
+      addEvent(`呼吸道模式: ${mode === 'basic' ? '30:2 (BVM)' : '進階呼吸道'}`);
+
+      if (wasRunning) startMetronome();
     }
 
     // ============ Settings ============
