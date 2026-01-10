@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>CPR 語音引導計時器 v2.2</title>
+  <title>CPR 語音引導計時器 v2.3</title>
   <style>
     * {
       margin: 0;
@@ -843,7 +843,7 @@
 
   <div class="app-container">
     <div class="header">
-      <h1>CPR 語音引導計時器 <small style="font-size:0.6em; color:#666;">v2.2</small></h1>
+      <h1>CPR 語音引導計時器 <small style="font-size:0.6em; color:#666;">v2.3</small></h1>
       <div class="header-controls">
         <button class="btn-sm btn-reset-header" onclick="resetTimer()">🔄 重置</button>
         <button class="btn-sm btn-test" onclick="fastForward(20)">⏩ +0:20</button>
@@ -1005,7 +1005,9 @@
       isVentilationPhase: false,  // 是否在通氣階段
       // Amiodarone 追蹤
       amiodaroneGiven: false,     // 是否已給 Amiodarone
-      amiodaroneCount: 0          // Amiodarone 給藥次數（最多 2 次：300mg + 150mg）
+      amiodaroneCount: 0,         // Amiodarone 給藥次數（最多 2 次：300mg + 150mg）
+      // 心律檢查時節拍器狀態
+      metronomeWasRunning: false  // 記錄心律檢查前節拍器是否運行
     };
 
     // ============ DOM Elements ============
@@ -1187,6 +1189,13 @@
       } else {
         speak('不可電擊心律，立即恢復壓胸');
       }
+
+      // 恢復節拍器（如果之前有運行）
+      if (state.metronomeWasRunning) {
+        setTimeout(() => {
+          startMetronome();
+        }, 1500);  // 延遲 1.5 秒恢復，給語音提示時間
+      }
     }
 
     function dismissAlert() {
@@ -1324,6 +1333,14 @@
 
     function handleRhythmCheck() {
       const t = state.totalSeconds;
+
+      // 心律檢查時暫停節拍器
+      if (state.metronomeOn) {
+        state.metronomeWasRunning = true;
+        stopMetronome();
+      } else {
+        state.metronomeWasRunning = false;
+      }
 
       // Build alert message dynamically
       let title = '停止壓胸！';
@@ -1581,24 +1598,45 @@
       document.getElementById('compressionCount').textContent = state.compressionCount;
     }
 
-    // 30:2 通氣提示
+    // 30:2 通氣提示（暫停節拍器 4 秒，語音倒數）
     function triggerVentilationPrompt() {
       state.isVentilationPhase = true;
-      document.getElementById('ventilationPrompt').classList.add('active');
+      const ventPrompt = document.getElementById('ventilationPrompt');
+      const ventText = ventPrompt.querySelector('.vent-text');
+      ventPrompt.classList.add('active');
 
-      // 播放不同音調提示通氣
+      // 暫停節拍器聲音（isVentilationPhase = true 已阻止 beep）
+      // 播放不同音調提示開始通氣
       playMetronomeBeep(600);
+
+      // 通氣 1 提示
+      ventText.textContent = '通氣 1 ...';
       if (state.settings.voice) {
-        speak('通氣');
+        speak('通氣 1');
       }
 
-      // 2 秒後自動恢復（假設通氣完成）
+      // 1.5 秒後：通氣 2 提示
       setTimeout(() => {
-        document.getElementById('ventilationPrompt').classList.remove('active');
+        if (!state.isVentilationPhase) return;
+        ventText.textContent = '通氣 2 ...';
+        playMetronomeBeep(600);
+        if (state.settings.voice) {
+          speak('通氣 2');
+        }
+      }, 1500);
+
+      // 3.5 秒後：恢復壓胸
+      setTimeout(() => {
+        if (!state.isVentilationPhase) return;
+        ventText.textContent = '通氣 2 次！';  // 恢復原本文字
+        ventPrompt.classList.remove('active');
         state.compressionCount = 0;
         state.isVentilationPhase = false;
         updateCompressionDisplay();
-      }, 2000);
+
+        // 播放較高音調表示恢復壓胸
+        playMetronomeBeep(900);
+      }, 3500);
     }
 
     // 進階呼吸道模式：每 6 秒通氣
