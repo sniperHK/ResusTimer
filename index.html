@@ -793,6 +793,22 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.6; }
     }
+
+    /* 下載按鈕 */
+    .btn-download {
+      padding: 4px 10px;
+      font-size: 0.7rem;
+      background: rgba(0, 255, 136, 0.2);
+      border: 1px solid #00ff88;
+      color: #00ff88;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-download:hover {
+      background: rgba(0, 255, 136, 0.4);
+    }
   </style>
 </head>
 
@@ -956,7 +972,10 @@
       </div>
 
       <div class="panel-section" style="flex:1;">
-        <h3>事件記錄</h3>
+        <h3 style="display:flex; justify-content:space-between; align-items:center;">
+          事件記錄
+          <button class="btn-download" onclick="downloadEventLog()" title="下載事件紀錄 CSV">📥 CSV</button>
+        </h3>
         <div class="event-log" id="eventList"></div>
       </div>
     </div>
@@ -1713,6 +1732,51 @@
       } else {
         document.exitFullscreen();
       }
+    }
+
+    // ============ Event Log Download ============
+    function downloadEventLog() {
+      if (state.events.length === 0) {
+        alert('目前沒有事件記錄可下載');
+        return;
+      }
+
+      // 建立 CSV 內容（含 BOM 讓 Excel 正確顯示中文）
+      const BOM = '\uFEFF';
+      let csv = BOM + '時間,事件,類型\n';
+
+      // 反轉事件順序（從最早到最新）
+      const eventsChronological = [...state.events].reverse();
+
+      eventsChronological.forEach(e => {
+        // 處理逗號和引號
+        const text = e.text.replace(/"/g, '""');
+        const type = e.type || '一般';
+        csv += `"${e.time}","${text}","${type}"\n`;
+      });
+
+      // 加入摘要資訊
+      csv += '\n';
+      csv += '"=== 急救摘要 ===","",""\n';
+      csv += `"總時間","${formatTime(state.totalSeconds)}",""\n`;
+      csv += `"電擊次數","${state.shockCount}",""\n`;
+      csv += `"Epi 次數","${state.epiCount}",""\n`;
+      csv += `"Amiodarone","${state.amiodaroneCount > 0 ? state.amiodaroneCount + ' 劑' : '未使用'}",""\n`;
+      csv += `"循環數","${state.cycleNumber}",""\n`;
+
+      // 建立下載連結
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+      a.href = url;
+      a.download = `CPR_Event_Log_${timestamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      addEvent('📥 事件紀錄已下載');
     }
 
     // ============ Keyboard ============
