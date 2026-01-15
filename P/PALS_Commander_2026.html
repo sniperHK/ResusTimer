@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>兒科戰場最前線 PALS</title>
+<style>
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #f4f4f9;
+        margin: 0;
+        padding: 10px;
+        color: #333;
+    }
+    .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: #fff;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+        text-align: center;
+        margin-bottom: 5px;
+        font-size: 24px;
+        color: #d32f2f;
+    }
+    .subtitle {
+        text-align: center;
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 20px;
+    }
+    .section {
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+    }
+    .section h2 {
+        font-size: 18px;
+        margin-bottom: 10px;
+        color: #0056b3;
+    }
+    .btn {
+        display: inline-block;
+        padding: 12px 15px;
+        font-size: 16px;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        outline: none;
+        color: #fff;
+        background-color: #007bff;
+        border: none;
+        border-radius: 8px;
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 10px;
+        -webkit-tap-highlight-color: transparent;
+        transition: background-color 0.2s;
+    }
+    .btn:active {
+        transform: scale(0.98);
+    }
+    .btn-toggle {
+        background-color: #e0e0e0;
+        color: #333;
+        margin-right: 5px;
+        margin-bottom: 5px;
+        width: calc(33% - 6px);
+        min-width: 80px;
+        padding: 10px 5px;
+    }
+    .btn-toggle.active {
+        background-color: #28a745;
+        color: #fff;
+    }
+    .input-group {
+        margin-bottom: 10px;
+    }
+    label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    input, select {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-sizing: border-box;
+    }
+    .result-box {
+        background-color: #e9ecef;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 10px;
+        font-family: monospace;
+        white-space: pre-wrap;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+    
+    /* Airway Table Style */
+    .airway-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        background: white;
+        font-size: 14px;
+    }
+    .airway-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        vertical-align: middle;
+    }
+    .airway-table .label {
+        background-color: #f8f9fa;
+        font-weight: bold;
+        width: 40%;
+        color: #555;
+    }
+    .airway-table .val {
+        font-weight: bold;
+        color: #000;
+        font-size: 16px;
+    }
+    
+    /* Defib Table Style */
+    .shock-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        background: white;
+    }
+    .shock-table td, .shock-table th {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: center;
+    }
+    .shock-table th {
+        background-color: #f2f2f2;
+        color: #333;
+    }
+    .shock-val {
+        font-size: 24px;
+        font-weight: bold;
+        color: #d32f2f;
+    }
+    
+    .btn-metronome {
+        background-color: #ff9800;
+        font-weight: bold;
+    }
+    .btn-metronome.playing {
+        background-color: #f57c00;
+        animation: pulse 0.5s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.8; }
+        100% { opacity: 1; }
+    }
+    .flex-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        justify-content: space-between;
+    }
+    .timer-display {
+        font-size: 32px;
+        font-weight: bold;
+        text-align: center;
+        margin-top: 10px;
+        color: #d32f2f;
+        background: #fff0f0;
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #f5c6cb;
+    }
+    .drug-alert {
+        color: red;
+        font-weight: bold;
+        animation: flash 1s infinite;
+    }
+    @keyframes flash {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    footer {
+        text-align: center;
+        font-size: 10px;
+        color: #aaa;
+        margin-top: 30px;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>兒科戰場最前線 PALS</h1>
+    <div class="subtitle">Made by 台大小兒內分泌科總醫師葉晉銘 (2026/01/13)</div>
+
+    <div class="section">
+        <h2>1. CPR 節律器 (120 bpm)</h2>
+        <button id="metroBtn" class="btn btn-metronome" onclick="toggleMetronome()">開啟節律音效</button>
+    </div>
+
+    <div class="section">
+        <h2>2. 現場狀況確認 (點擊變色)</h2>
+        <div class="flex-row">
+            <button class="btn btn-toggle" onclick="this.classList.toggle('active')">O2</button>
+            <button class="btn btn-toggle" onclick="this.classList.toggle('active')">IV</button>
+            <button class="btn btn-toggle" onclick="this.classList.toggle('active')">Monitor</button>
+            <button class="btn btn-toggle" onclick="this.classList.toggle('active')">電擊器</button>
+            <button class="btn btn-toggle" onclick="this.classList.toggle('active')">急救板</button>
+            <button class="btn btn-toggle" onclick="this.classList.toggle('active')">One Touch</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>3. 參數確認</h2>
+        <div class="input-group">
+            <label>性別 (Gender)</label>
+            <select id="gender" onchange="calculateAll()">
+                <option value="male">男 (Male)</option>
+                <option value="female">女 (Female)</option>
+            </select>
+        </div>
+        <div class="input-group">
+            <label>年紀 (Age, 歲)</label>
+            <input type="number" id="age" placeholder="請輸入年齡 (0-18)" oninput="calculateAll()" inputmode="numeric">
+        </div>
+        <div class="input-group">
+            <label>體重 (Weight, kg)</label>
+            <input type="number" id="weight" placeholder="若不清楚可留空 (自動計算)" oninput="calculateAll()" inputmode="decimal">
+        </div>
+        <div id="weightRef" class="result-box" style="display:none;"></div>
+    </div>
+
+    <div class="section">
+        <h2>4. 插管準備 (Table Lookup)</h2>
+        <div style="color: #856404; font-weight: bold; margin-bottom: 10px; background: #fff3cd; padding: 10px; border-radius: 4px; border: 1px solid #ffeeba;">
+            備物提醒: Endo, Blade, Stylet, Jelly, EtCO2
+        </div>
+        <div id="intubationResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>5. 急救藥物 (4 min cycle)</h2>
+        <div id="drugResult" class="result-box">請先輸入參數</div>
+        <button class="btn" style="margin-top: 10px; background-color: #17a2b8;" onclick="startDrugTimer()">開始 4 分鐘計時</button>
+        <div id="timerDisplay" class="timer-display">04:00</div>
+    </div>
+
+    <div class="section">
+        <h2>6. 電擊劑量 (Joule Lookup)</h2>
+        <div class="input-group">
+            <label>心律選擇</label>
+            <select id="rhythm" onchange="calculateAll()">
+                <option value="none">-- 請選擇心律 --</option>
+                <option value="shockable">VF / pVT (可電擊)</option>
+                <option value="nonshockable">Asystole / PEA (不可電擊)</option>
+            </select>
+        </div>
+        <div id="shockResult" style="margin-top:10px;"></div>
+    </div>
+
+    <footer>
+        PALS Commander Tool v2.0 (Excel Integrated)
+    </footer>
+</div>
+
+<script>
+// Inject Data
+const weightData = 
+{
+  "female": {
+    "0": { "P15": 2.8, "P50": 3.2, "P85": 3.7 },
+    "1": { "P15": 7.9, "P50": 8.9, "P85": 10.2 },
+    "2": { "P15": 10.1, "P50": 11.5, "P85": 13.1 },
+    "3": { "P15": 12.1, "P50": 13.9, "P85": 15.9 },
+    "4": { "P15": 14.0, "P50": 16.1, "P85": 18.6 },
+    "5": { "P15": 15.7, "P50": 18.2, "P85": 21.3 },
+    "6": { "P15": 17.7, "P50": 20.5, "P85": 24.2 },
+    "7": { "P15": 19.6, "P50": 22.8, "P85": 27.1 },
+    "8": { "P15": 21.7, "P50": 25.4, "P85": 30.8 },
+    "9": { "P15": 24.0, "P50": 28.2, "P85": 35.2 },
+    "10": { "P15": 26.5, "P50": 31.8, "P85": 40.0 },
+    "11": { "P15": 30.3, "P50": 36.5, "P85": 45.5 },
+    "12": { "P15": 34.8, "P50": 41.7, "P85": 50.1 },
+    "13": { "P15": 38.7, "P50": 45.4, "P85": 53.5 },
+    "14": { "P15": 41.7, "P50": 48.1, "P85": 56.0 },
+    "15": { "P15": 43.6, "P50": 49.8, "P85": 57.5 },
+    "16": { "P15": 44.8, "P50": 50.8, "P85": 58.0 },
+    "17": { "P15": 45.3, "P50": 51.0, "P85": 58.0 },
+    "18": { "P15": 45.7, "P50": 51.0, "P85": 58.0 }
+  },
+  "male": {
+    "0": { "P15": 2.9, "P50": 3.3, "P85": 3.9 },
+    "1": { "P15": 8.6, "P50": 9.6, "P85": 10.8 },
+    "2": { "P15": 10.8, "P50": 12.2, "P85": 13.7 },
+    "3": { "P15": 12.7, "P50": 14.3, "P85": 16.3 },
+    "4": { "P15": 14.3, "P50": 16.3, "P85": 18.7 },
+    "5": { "P15": 16.0, "P50": 18.3, "P85": 21.1 },
+    "6": { "P15": 18.2, "P50": 20.9, "P85": 24.7 },
+    "7": { "P15": 20.4, "P50": 23.6, "P85": 28.2 },
+    "8": { "P15": 22.7, "P50": 26.3, "P85": 32.0 },
+    "9": { "P15": 24.8, "P50": 28.8, "P85": 35.7 },
+    "10": { "P15": 26.9, "P50": 31.5, "P85": 39.4 },
+    "11": { "P15": 29.6, "P50": 35.3, "P85": 44.7 },
+    "12": { "P15": 33.1, "P50": 40.3, "P85": 50.4 },
+    "13": { "P15": 38.0, "P50": 46.5, "P85": 57.0 },
+    "14": { "P15": 44.0, "P50": 52.5, "P85": 63.0 },
+    "15": { "P15": 49.0, "P50": 56.5, "P85": 66.5 },
+    "16": { "P15": 52.0, "P50": 59.0, "P85": 69.0 },
+    "17": { "P15": 54.0, "P50": 61.0, "P85": 70.0 },
+    "18": { "P15": 55.0, "P50": 62.5, "P85": 70.5 }
+  }
+}
+; // JS will parse the string
+const intubationData = 
+[
+  {
+    "label": "新生兒(<1kg)",
+    "traditional": "00/直",
+    "video_handle": "",
+    "video_size": "",
+    "endo": "2.5 (無cuff)",
+    "depth": "6.5-7",
+    "lma": ""
+  },
+  {
+    "label": "新生兒 (1-2kg)",
+    "traditional": "0/直",
+    "video_handle": "直柄",
+    "video_size": "0",
+    "endo": "3 (無cuff)",
+    "depth": "7-8",
+    "lma": ""
+  },
+  {
+    "label": "新生兒 (2-3kg)",
+    "traditional": "1/直",
+    "video_handle": "直柄",
+    "video_size": "0",
+    "endo": "3.5 (無cuff)",
+    "depth": "8-9",
+    "lma": "1"
+  },
+  {
+    "label": "新生兒 (>3kg)",
+    "traditional": "1/直",
+    "video_handle": "直柄",
+    "video_size": "0",
+    "endo": "3.5 (無/有cuff)",
+    "depth": "9",
+    "lma": "1"
+  },
+  {
+    "label": "0-1歲",
+    "traditional": "1/直",
+    "video_handle": "直/彎",
+    "video_size": "0/1",
+    "endo": "4 (無/有cuff)",
+    "depth": "9-10",
+    "lma": "1 or 1.5"
+  },
+  {
+    "label": "1歲",
+    "traditional": "1/直",
+    "video_handle": "彎柄",
+    "video_size": "1",
+    "endo": "4 (有cuff)",
+    "depth": "11-12",
+    "lma": "2"
+  },
+  {
+    "label": "2歲",
+    "traditional": "2/直 or 彎",
+    "video_handle": "彎柄",
+    "video_size": "2",
+    "endo": "4 (有cuff)",
+    "depth": "12-13",
+    "lma": "2"
+  },
+  {
+    "label": "3歲",
+    "traditional": "2/直 or 彎",
+    "video_handle": "彎柄",
+    "video_size": "2",
+    "endo": "4.5 (有cuff)",
+    "depth": "13-14",
+    "lma": "2"
+  },
+  {
+    "label": "4歲",
+    "traditional": "2/彎",
+    "video_handle": "彎柄",
+    "video_size": "2",
+    "endo": "4.5 (有cuff)",
+    "depth": "14-15",
+    "lma": "2"
+  },
+  {
+    "label": "5歲",
+    "traditional": "2/彎",
+    "video_handle": "彎柄",
+    "video_size": "2",
+    "endo": "5 (有cuff)",
+    "depth": "14-15",
+    "lma": "2"
+  },
+  {
+    "label": "6歲",
+    "traditional": "2/彎",
+    "video_handle": "彎柄",
+    "video_size": "2",
+    "endo": "5 (有cuff)",
+    "depth": "15-16",
+    "lma": "2.5"
+  },
+  {
+    "label": "7歲",
+    "traditional": "2/彎",
+    "video_handle": "彎柄",
+    "video_size": "2",
+    "endo": "5.5 (有cuff)",
+    "depth": "16-17",
+    "lma": "2.5"
+  },
+  {
+    "label": "8歲",
+    "traditional": "2/彎",
+    "video_handle": "彎柄",
+    "video_size": "2",
+    "endo": "6 (有cuff)",
+    "depth": "17-18",
+    "lma": "3"
+  },
+  {
+    "label": "9歲",
+    "traditional": "2/彎",
+    "video_handle": "彎柄",
+    "video_size": "3",
+    "endo": "6 (有cuff)",
+    "depth": "18-19",
+    "lma": "3"
+  },
+  {
+    "label": "10歲",
+    "traditional": "3/彎",
+    "video_handle": "彎柄",
+    "video_size": "3",
+    "endo": "6.5 (有cuff)",
+    "depth": "18-19",
+    "lma": "3"
+  },
+  {
+    "label": "11歲",
+    "traditional": "3/彎",
+    "video_handle": "彎柄",
+    "video_size": "3",
+    "endo": "6.5 (有cuff)",
+    "depth": "19-20",
+    "lma": "4"
+  },
+  {
+    "label": "12歲",
+    "traditional": "3/彎",
+    "video_handle": "彎柄",
+    "video_size": "3",
+    "endo": "7 (有cuff)",
+    "depth": "19-20",
+    "lma": "4"
+  },
+  {
+    "label": "13歲",
+    "traditional": "3/彎",
+    "video_handle": "彎柄",
+    "video_size": "3",
+    "endo": "7.5 (有cuff)",
+    "depth": "20-21",
+    "lma": "4"
+  },
+  {
+    "label": "14歲",
+    "traditional": "3/彎",
+    "video_handle": "彎柄",
+    "video_size": "3",
+    "endo": "8 (有cuff)",
+    "depth": "21-22",
+    "lma": "5"
+  }
+]
+;
+const defibData = 
+[
+  {
+    "min": 0,
+    "max": 0.5,
+    "label": "≤500g",
+    "sync_1": "2",
+    "sync_2": "2",
+    "defib_1": "2",
+    "defib_2": "2"
+  },
+  {
+    "min": 0.501,
+    "max": 0.75,
+    "label": "501~750g",
+    "sync_1": "2",
+    "sync_2": "2",
+    "defib_1": "2",
+    "defib_2": "3"
+  },
+  {
+    "min": 0.751,
+    "max": 1.0,
+    "label": "751~1000g",
+    "sync_1": "2",
+    "sync_2": "2",
+    "defib_1": "2",
+    "defib_2": "5"
+  },
+  {
+    "min": 1.001,
+    "max": 1.25,
+    "label": "1001~1250g",
+    "sync_1": "2",
+    "sync_2": "3",
+    "defib_1": "3",
+    "defib_2": "5"
+  },
+  {
+    "min": 1.251,
+    "max": 1.5,
+    "label": "1251~1500g",
+    "sync_1": "2",
+    "sync_2": "3",
+    "defib_1": "3",
+    "defib_2": "7"
+  },
+  {
+    "min": 1.501,
+    "max": 1.75,
+    "label": "1501~1750g",
+    "sync_1": "2",
+    "sync_2": "5",
+    "defib_1": "5",
+    "defib_2": "7"
+  },
+  {
+    "min": 1.751,
+    "max": 2.5,
+    "label": "1751~2500g",
+    "sync_1": "2",
+    "sync_2": "5",
+    "defib_1": "5",
+    "defib_2": "10"
+  },
+  {
+    "min": 2.501,
+    "max": 3.5,
+    "label": "2501~3500g",
+    "sync_1": "2",
+    "sync_2": "7",
+    "defib_1": "7",
+    "defib_2": "15"
+  },
+  {
+    "min": 3.501,
+    "max": 3.75,
+    "label": "3501~3750g",
+    "sync_1": "2",
+    "sync_2": "10",
+    "defib_1": "10",
+    "defib_2": "15"
+  },
+  {
+    "min": 3.751,
+    "max": 4.0,
+    "label": "3751~4000g",
+    "sync_1": "2",
+    "sync_2": "10",
+    "defib_1": "10",
+    "defib_2": "20"
+  },
+  {
+    "min": 4.001,
+    "max": 5.0,
+    "label": "4001~5000g",
+    "sync_1": "3",
+    "sync_2": "10",
+    "defib_1": "10",
+    "defib_2": "20"
+  },
+  {
+    "min": 5.001,
+    "max": 6.0,
+    "label": "5001~6000g",
+    "sync_1": "3",
+    "sync_2": "15",
+    "defib_1": "15",
+    "defib_2": "30"
+  },
+  {
+    "min": 6.1,
+    "max": 7.5,
+    "label": "6.1~7.5kg",
+    "sync_1": "5",
+    "sync_2": "15",
+    "defib_1": "15",
+    "defib_2": "30"
+  },
+  {
+    "min": 7.6,
+    "max": 10.0,
+    "label": "7.6~10kg",
+    "sync_1": "5",
+    "sync_2": "20",
+    "defib_1": "20",
+    "defib_2": "50"
+  },
+  {
+    "min": 10.1,
+    "max": 12.5,
+    "label": "10.1~12.5kg",
+    "sync_1": "7",
+    "sync_2": "30",
+    "defib_1": "30",
+    "defib_2": "50"
+  },
+  {
+    "min": 12.6,
+    "max": 14.0,
+    "label": "12.6~14kg",
+    "sync_1": "7",
+    "sync_2": "30",
+    "defib_1": "30",
+    "defib_2": "70"
+  },
+  {
+    "min": 14.1,
+    "max": 15.0,
+    "label": "14.1~15kg",
+    "sync_1": "10",
+    "sync_2": "30",
+    "defib_1": "30",
+    "defib_2": "70"
+  },
+  {
+    "min": 15.1,
+    "max": 17.5,
+    "label": "15.1~17.5kg",
+    "sync_1": "10",
+    "sync_2": "50",
+    "defib_1": "50",
+    "defib_2": "70"
+  },
+  {
+    "min": 17.6,
+    "max": 20.0,
+    "label": "17.6~20kg",
+    "sync_1": "15",
+    "sync_2": "50",
+    "defib_1": "50",
+    "defib_2": "100"
+  },
+  {
+    "min": 20.1,
+    "max": 25.0,
+    "label": "20.1~25kg",
+    "sync_1": "20",
+    "sync_2": "50",
+    "defib_1": "50",
+    "defib_2": "120"
+  },
+  {
+    "min": 25.1,
+    "max": 30.0,
+    "label": "25.1~30kg",
+    "sync_1": "20",
+    "sync_2": "70",
+    "defib_1": "70",
+    "defib_2": "150"
+  },
+  {
+    "min": 30.1,
+    "max": 35.0,
+    "label": "30.1~35kg",
+    "sync_1": "30",
+    "sync_2": "70",
+    "defib_1": "70",
+    "defib_2": "150"
+  },
+  {
+    "min": 35.1,
+    "max": 40.0,
+    "label": "35.1~40kg",
+    "sync_1": "30",
+    "sync_2": "100",
+    "defib_1": "100",
+    "defib_2": "200"
+  },
+  {
+    "min": 40.1,
+    "max": 50.0,
+    "label": "40.1~50kg",
+    "sync_1": "30",
+    "sync_2": "120",
+    "defib_1": "120",
+    "defib_2": "200"
+  },
+  {
+    "min": 50.1,
+    "max": 999.0,
+    "label": ">50kg",
+    "sync_1": "50",
+    "sync_2": "120",
+    "defib_1": "120",
+    "defib_2": "200"
+  }
+]
+;
+
+// --- Helper: Find "Pretty" Weight ---
+function getPrettyWeight(p15, p50, p85) {
+    let candidates = [];
+    let preferIntegerMultipleOf5 = (p50 >= 12); 
+    if (preferIntegerMultipleOf5) {
+        let start = Math.ceil(p15 / 5) * 5;
+        let end = Math.floor(p85 / 5) * 5;
+        for (let w = start; w <= end; w += 5) candidates.push(w);
+    } else {
+        let start = Math.ceil(p15 * 2) / 2;
+        let end = Math.floor(p85 * 2) / 2;
+        for (let w = start; w <= end; w += 0.5) candidates.push(w);
+    }
+    if (candidates.length === 0) {
+        let start = Math.ceil(p15);
+        let end = Math.floor(p85);
+        for (let w = start; w <= end; w += 1) candidates.push(w);
+    }
+    if (candidates.length === 0) return p50;
+    
+    let best = candidates[0];
+    let minDiff = Math.abs(best - p50);
+    for (let c of candidates) {
+        let diff = Math.abs(c - p50);
+        if (diff < minDiff) { minDiff = diff; best = c; }
+    }
+    return best;
+}
+
+// --- Metronome ---
+let audioCtx = null;
+let metroInterval = null;
+let isPlaying = false;
+function toggleMetronome() {
+    const btn = document.getElementById('metroBtn');
+    if (isPlaying) {
+        clearInterval(metroInterval);
+        isPlaying = false;
+        btn.innerText = "開啟節律音效 (120bpm)";
+        btn.classList.remove('playing');
+    } else {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        isPlaying = true;
+        btn.innerText = "停止節律音效";
+        btn.classList.add('playing');
+        playClick(); 
+        metroInterval = setInterval(playClick, 500);
+    }
+}
+function playClick() {
+    if (!audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.frequency.value = 1000; 
+    gain.gain.setValueAtTime(1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+}
+
+// --- Lookup Logic ---
+function findIntubationRow(age, weight) {
+    let labelToFind = "";
+    if (age < 1) labelToFind = "0-1歲";
+    else labelToFind = Math.floor(age) + "歲";
+    
+    let match = intubationData.find(row => row.label === labelToFind);
+    
+    // Newborn refinement if age < 1 and weight is small
+    if (age < 1 && weight) {
+        if (weight < 1) match = intubationData.find(r => r.label.includes("<1kg"));
+        else if (weight < 2) match = intubationData.find(r => r.label.includes("1-2kg"));
+        else if (weight < 3) match = intubationData.find(r => r.label.includes("2-3kg"));
+        else if (weight >= 3 && weight < 4) match = intubationData.find(r => r.label.includes(">3kg")); 
+    }
+    return match;
+}
+
+function findDefibRow(weight) {
+    // Iterate defibData ranges
+    return defibData.find(row => weight >= row.min && weight <= row.max);
+}
+
+// --- Main Calculation ---
+function calculateAll() {
+    const gender = document.getElementById('gender').value;
+    const ageStr = document.getElementById('age').value;
+    const weightStr = document.getElementById('weight').value;
+    const rhythm = document.getElementById('rhythm').value;
+    
+    if (!ageStr) return;
+    
+    const age = parseFloat(ageStr);
+    let weight = parseFloat(weightStr);
+    let isEstWeight = false;
+
+    // 1. Weight Logic
+    let lookupAge = Math.floor(age);
+    if (lookupAge > 18) lookupAge = 18; if(lookupAge < 0) lookupAge = 0;
+    
+    // Safety
+    if (!weightData[gender][lookupAge]) lookupAge = 0;
+    const ref = weightData[gender][lookupAge];
+    
+    if (isNaN(weight)) {
+        weight = getPrettyWeight(ref.P15, ref.P50, ref.P85);
+        isEstWeight = true;
+    }
+    
+    // Display Weight
+    const weightDiv = document.getElementById('weightRef');
+    weightDiv.style.display = 'block';
+    weightDiv.innerHTML = `<div><strong>參考範圍 (${lookupAge}歲):</strong> 15th: ${ref.P15} ~ 85th: ${ref.P85} kg</div>` + 
+                          `<div style="margin-top:5px; color:#0056b3;">目前使用: <strong>${weight} kg</strong> ${isEstWeight ? '(自動代入)' : ''}</div>`;
+
+    // 2. Intubation Lookup
+    const airwayRow = findIntubationRow(age, weight);
+    const airwayDiv = document.getElementById('intubationResult');
+    
+    if (airwayRow) {
+        let html = `<table class="airway-table">`;
+        html += `<tr><td class="label">喉頭鏡 (傳統)</td><td class="val">${airwayRow.traditional}</td></tr>`;
+        html += `<tr><td class="label">喉頭鏡 (影像-小金) 柄</td><td class="val">${airwayRow.video_handle}</td></tr>`;
+        html += `<tr><td class="label">喉頭鏡 (影像-小金) 號碼</td><td class="val">${airwayRow.video_size}</td></tr>`;
+        html += `<tr><td class="label">氣管內管</td><td class="val">${airwayRow.endo}</td></tr>`;
+        html += `<tr><td class="label">固定深度 (cm)</td><td class="val">${airwayRow.depth}</td></tr>`;
+        html += `<tr><td class="label">LMA (i-gel)</td><td class="val">${airwayRow.lma}</td></tr>`;
+        html += `</table>`;
+        airwayDiv.innerHTML = html;
+    } else {
+        airwayDiv.innerHTML = "<div class='result-box'>查無對應年齡資料</div>";
+    }
+
+    // 3. Drugs
+    let doseMl = weight * 0.1;
+    if (doseMl > 10) doseMl = 10;
+    let amioDose = weight * 5;
+    if (amioDose > 300) amioDose = 300;
+    let lidoDose = weight * 1;
+    
+    let drugHtml = `<strong>1. Bosmin (Epinephrine) 1:10000</strong><br>`;
+    drugHtml += `<span style="font-size:0.9em; color:#555;">0.1 ml/kg (Max 10ml)</span><br>`;
+    drugHtml += `<div style="font-size:1.2em; color:blue; margin-bottom:8px;">給予: <strong>${doseMl.toFixed(2)} ml</strong></div>`;
+    
+    drugHtml += `<strong>2. Amiodarone</strong><br>`;
+    drugHtml += `<span style="font-size:0.9em; color:#555;">5 mg/kg (Max 300mg)</span><br>`;
+    drugHtml += `<div style="font-size:1.2em; color:#d9534f; margin-bottom:8px;">給予: <strong>${amioDose.toFixed(0)} mg</strong></div>`;
+    
+    drugHtml += `<strong>3. Lidocaine</strong><br>`;
+    drugHtml += `<span style="font-size:0.9em; color:#555;">1 mg/kg</span><br>`;
+    drugHtml += `<div style="font-size:1.2em; color:#d9534f; margin-bottom:5px;">給予: <strong>${lidoDose.toFixed(0)} mg</strong></div>`;
+    
+    document.getElementById('drugResult').innerHTML = drugHtml;
+
+    // 4. Defib Lookup
+    const shockDiv = document.getElementById('shockResult');
+    shockDiv.innerHTML = "";
+    
+    if (rhythm === 'none') {
+        shockDiv.innerText = "請選擇心律";
+    } else if (rhythm === 'nonshockable') {
+        shockDiv.innerHTML = "<div class='result-box' style='background:#ffebeb; color:red; font-weight:bold; text-align:center;'>不用電擊 (No Shock)<br><span style='color:black;'>盡快給予 Epinephrine!</span></div>";
+    } else {
+        const defibRow = findDefibRow(weight);
+        if (defibRow) {
+            let html = `<table class="shock-table">`;
+            html += `<tr><th>類型</th><th>1st J</th><th>2nd J</th></tr>`;
+            html += `<tr><td>同步整流 (Sync)</td><td class="shock-val">${defibRow.sync_1}</td><td class="shock-val">${defibRow.sync_2}</td></tr>`;
+            html += `<tr><td>去顫電擊 (Defib)</td><td class="shock-val">${defibRow.defib_1}</td><td class="shock-val">${defibRow.defib_2}</td></tr>`;
+            html += `</table>`;
+            html += `<div style="text-align:center; font-size:12px; color:#666; margin-top:5px;">對應體重區間: ${defibRow.label}</div>`;
+            shockDiv.innerHTML = html;
+        } else {
+            shockDiv.innerHTML = "<div class='result-box'>查無對應體重之電擊建議 (請確認體重)</div>";
+        }
+    }
+}
+
+// --- Timer ---
+let timerInterval = null;
+let secondsLeft = 240;
+function startDrugTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    secondsLeft = 240;
+    updateTimerDisplay();
+    if (audioCtx) playClick();
+    timerInterval = setInterval(() => {
+        secondsLeft--;
+        updateTimerDisplay();
+        if (secondsLeft <= 0) {
+            clearInterval(timerInterval);
+            document.getElementById('timerDisplay').innerText = "00:00 - 給藥！";
+            document.getElementById('timerDisplay').classList.add('drug-alert');
+            playAlarm();
+        }
+    }, 1000);
+}
+function updateTimerDisplay() {
+    const min = Math.floor(secondsLeft / 60);
+    const sec = secondsLeft % 60;
+    const text = `${min < 10 ? '0' : ''}${min}:${sec < 10 ? '0' : ''}${sec}`;
+    const display = document.getElementById('timerDisplay');
+    display.innerText = text;
+    if (secondsLeft > 0) display.classList.remove('drug-alert');
+}
+function playAlarm() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioCtx.currentTime;
+    for(let i=0; i<4; i++) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'square';
+        osc.frequency.value = 800;
+        const start = now + i*0.4;
+        gain.gain.setValueAtTime(0.5, start);
+        osc.start(start);
+        osc.stop(start + 0.2);
+    }
+}
+</script>
+</body>
+</html>

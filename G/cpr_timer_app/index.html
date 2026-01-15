@@ -187,6 +187,22 @@
       color: #000;
     }
 
+    .btn-shock.flash {
+      animation: shock-flash 0.5s infinite;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+    }
+
+    @keyframes shock-flash {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+      }
+      50% {
+        transform: scale(1.1);
+        box-shadow: 0 0 40px rgba(255, 215, 0, 1);
+      }
+    }
+
     .btn-epi {
       background: linear-gradient(135deg, #9b59b6, #8e44ad);
       color: #fff;
@@ -1205,8 +1221,12 @@
       // 語音提示
       if (isShockable) {
         speak('可電擊心律，考慮電擊後立即恢復壓胸');
+        // 電擊按鈕閃爍提醒
+        document.querySelector('.btn-shock').classList.add('flash');
       } else {
         speak('不可電擊心律，立即恢復壓胸');
+        // 移除閃爍（如果之前是 shockable）
+        document.querySelector('.btn-shock').classList.remove('flash');
       }
 
       // 恢復節拍器（如果之前有運行）
@@ -1437,6 +1457,9 @@
       elements.shockCount.textContent = state.shockCount;
       addEvent(`⚡ 電擊 #${state.shockCount}`, 'shock');
       speak('電擊完成，立即恢復壓胸');
+
+      // 停止電擊按鈕閃爍
+      document.querySelector('.btn-shock').classList.remove('flash');
 
       // Amiodarone 提示邏輯（根據電擊次數）
       checkAmiodaronePrompt();
