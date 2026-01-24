@@ -208,6 +208,22 @@
       color: #fff;
     }
 
+    .btn-epi.flash {
+      animation: epi-flash 0.8s infinite;
+      box-shadow: 0 0 20px rgba(155, 89, 182, 0.8);
+    }
+
+    @keyframes epi-flash {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(155, 89, 182, 0.8);
+      }
+      50% {
+        transform: scale(1.08);
+        box-shadow: 0 0 35px rgba(155, 89, 182, 1);
+      }
+    }
+
     .btn-rosc {
       background: linear-gradient(135deg, #2ecc71, #27ae60);
       color: #fff;
@@ -597,6 +613,15 @@
       color: #fff;
     }
 
+    .btn-rhythm-select.rosc {
+      background: linear-gradient(135deg, #27ae60, #2ecc71);
+      border-color: #27ae60;
+    }
+
+    .btn-rhythm-select.rosc:hover {
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+    }
+
     .btn-rhythm-select:hover {
       transform: scale(1.1);
       box-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
@@ -862,6 +887,11 @@
             <span class="rhythm-name">PEA</span>
             <span class="rhythm-desc">無脈搏電氣活動</span>
           </button>
+          <button class="btn-rhythm-select rosc" onclick="selectRhythmAndDismiss('ROSC')">
+            <span class="rhythm-icon">💚</span>
+            <span class="rhythm-name">ROSC</span>
+            <span class="rhythm-desc">恢復自主循環</span>
+          </button>
         </div>
       </div>
 
@@ -899,7 +929,7 @@
         <button class="btn btn-start" id="btnStart" onclick="startTimer()">開始急救</button>
         <button class="btn btn-stop" id="btnStop" onclick="stopTimer()" style="display:none;">暫停</button>
         <button class="btn btn-shock" onclick="recordShock()">⚡ 電擊</button>
-        <button class="btn btn-epi" onclick="recordEpinephrine()">💉 Epi</button>
+        <button class="btn btn-epi" id="btnEpi" onclick="recordEpinephrine()">💉 Epi</button>
         <button class="btn btn-rosc" onclick="recordROSC()">💚 ROSC</button>
       </div>
     </div>
@@ -1157,13 +1187,18 @@
 
     function updateNextEpiDisplay() {
       const remaining = getNextEpiTime();
+      const btnEpi = document.getElementById('btnEpi');
+
       if (remaining <= 0) {
         elements.nextEpiTime.textContent = '現在!';
         elements.epiStatus.classList.add('epi-due');
+        if (btnEpi) btnEpi.classList.add('flash');
       } else {
         elements.nextEpiTime.textContent = formatTime(remaining);
         // Flash if within 30 seconds
-        elements.epiStatus.classList.toggle('epi-due', remaining <= 30);
+        const shouldFlash = remaining <= 30;
+        elements.epiStatus.classList.toggle('epi-due', shouldFlash);
+        if (btnEpi) btnEpi.classList.toggle('flash', shouldFlash);
       }
     }
 
@@ -1202,6 +1237,13 @@
     }
 
     function selectRhythmAndDismiss(selectedRhythm) {
+      // Handle ROSC selection
+      if (selectedRhythm === 'ROSC') {
+        dismissAlert();
+        recordROSC();
+        return;
+      }
+
       // 記錄選擇的心律
       const isShockable = selectedRhythm === 'VT/VF';
       state.rhythm = isShockable ? 'shockable' : 'non-shockable';
@@ -1494,6 +1536,10 @@
     }
 
     function recordEpinephrine() {
+      // Remove flash from main Epi button
+      const btnEpi = document.getElementById('btnEpi');
+      if (btnEpi) btnEpi.classList.remove('flash');
+
       state.epiCount++;
       state.lastEpiTime = state.totalSeconds;
       elements.epiCount.textContent = state.epiCount;
@@ -1816,6 +1862,9 @@
         } else if (e.key === '3') {
           e.preventDefault();
           selectRhythmAndDismiss('PEA');
+        } else if (e.key === '4') {
+          e.preventDefault();
+          selectRhythmAndDismiss('ROSC');
         }
         return; // 阻止其他按鍵
       }
